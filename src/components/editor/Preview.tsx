@@ -1,9 +1,12 @@
 
 import React, { useState, useRef } from 'react';
-import { Play, Pause, Volume2, AudioLines } from 'lucide-react';
+import { Play, Pause, Volume2, AudioLines, BarChart3, CircleOff } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { AudioWaveform } from './AudioWaveform';
+import { SpectrumAnalysis } from './SpectrumAnalysis';
+import { PhaseAnalysis } from './PhaseAnalysis';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PreviewProps {
   file: File | null;
@@ -36,7 +39,7 @@ export const Preview = ({ file }: PreviewProps) => {
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">Waveform</h3>
+        <h3 className="text-lg font-medium">Audio Analysis</h3>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Volume2 className="h-4 w-4 text-editor-text-secondary" />
@@ -55,7 +58,35 @@ export const Preview = ({ file }: PreviewProps) => {
       </div>
       
       <div className="preview-window flex-grow">
-        <AudioWaveform file={file} />
+        <Tabs defaultValue="waveform" className="w-full h-full">
+          <TabsList className="mb-2">
+            <TabsTrigger value="waveform" className="flex items-center gap-1">
+              <AudioLines className="h-4 w-4" />
+              <span>Waveform</span>
+            </TabsTrigger>
+            <TabsTrigger value="spectrum" className="flex items-center gap-1">
+              <BarChart3 className="h-4 w-4" />
+              <span>Spectrum</span>
+            </TabsTrigger>
+            <TabsTrigger value="phase" className="flex items-center gap-1">
+              <CircleOff className="h-4 w-4" />
+              <span>Phase</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="waveform" className="h-full">
+            <AudioWaveform file={file} />
+          </TabsContent>
+          
+          <TabsContent value="spectrum" className="h-full">
+            <SpectrumAnalysis file={file} />
+          </TabsContent>
+          
+          <TabsContent value="phase" className="h-full">
+            <PhaseAnalysis file={file} />
+          </TabsContent>
+        </Tabs>
+
         {file && file.type.includes('audio') && (
           <audio
             ref={audioRef}

@@ -29,6 +29,23 @@
   @apply w-full h-full;
 }
 
+/* Tabs styling */
+.tabs-list {
+  @apply flex gap-2 bg-editor-panel rounded-t-lg overflow-hidden;
+}
+
+.tab-trigger {
+  @apply px-4 py-2 flex items-center gap-2 hover:bg-editor-accent/10 transition-colors;
+}
+
+.tab-trigger[data-state="active"] {
+  @apply bg-editor-accent/20 text-editor-accent;
+}
+
+.tab-content {
+  @apply rounded-b-lg overflow-hidden;
+}
+
 @media (max-width: 768px) {
   .mobile-stack {
     @apply flex-col;
