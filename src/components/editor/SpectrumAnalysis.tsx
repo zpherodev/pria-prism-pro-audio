@@ -12,6 +12,8 @@ export const SpectrumAnalysis = ({ file, analyser, isPlaying }: SpectrumAnalysis
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const animationRef = useRef<number | null>(null);
+  const spectrogramDataRef = useRef<ImageData[]>([]);
+  const [freqLabels, setFreqLabels] = useState<number[]>([]);
 
   useEffect(() => {
     return () => {
@@ -40,15 +42,36 @@ export const SpectrumAnalysis = ({ file, analyser, isPlaying }: SpectrumAnalysis
         canvas.width = displayWidth;
         canvas.height = displayHeight;
       }
+      
+      // Clear spectrogram data on resize
+      spectrogramDataRef.current = [];
+      
+      // Initialize with black background
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
     };
     
     resizeCanvas();
+    
+    // Create frequency labels for y-axis (logarithmic scale)
+    if (analyser) {
+      const sampleRate = 44100; // Standard sample rate
+      const nyquist = sampleRate / 2;
+      const frequencies = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22].map(
+        khz => khz * 1000
+      );
+      setFreqLabels(frequencies);
+    }
+    
     window.addEventListener('resize', resizeCanvas);
     
     // Only start drawing when playing and analyzer is available
     if (isPlaying && analyser) {
       console.log("Starting spectrum visualization");
-      drawSpectrum();
+      drawSpectrogram();
     } else if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
@@ -63,7 +86,7 @@ export const SpectrumAnalysis = ({ file, analyser, isPlaying }: SpectrumAnalysis
     };
   }, [file, analyser, isPlaying]);
 
-  const drawSpectrum = () => {
+  const drawSpectrogram = () => {
     if (!analyser) {
       console.log("No analyzer available for spectrum");
       return;
@@ -77,38 +100,119 @@ export const SpectrumAnalysis = ({ file, analyser, isPlaying }: SpectrumAnalysis
 
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+    const width = canvas.width;
+    const height = canvas.height;
     
-    const draw = () => {
-      // Get canvas dimensions for responsive drawing
-      const width = canvas.width;
-      const height = canvas.height;
+    // Draw grid and labels
+    const drawGrid = () => {
+      // Background
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, 0, width, height);
       
+      // Time markers (x-axis) - add time markers every 0.5 seconds
+      ctx.fillStyle = '#6B7280';
+      ctx.font = '10px sans-serif';
+      
+      // Y-axis labels (frequencies)
+      for (let i = 0; i < freqLabels.length; i++) {
+        const freq = freqLabels[i];
+        const y = height - (height * Math.log10(freq + 1) / Math.log10(22000 + 1));
+        
+        // Only draw labels that fit on screen
+        if (y >= 10 && y <= height - 10) {
+          ctx.fillText(`${freq / 1000} kHz`, 5, y);
+          
+          // Draw horizontal grid line
+          ctx.strokeStyle = '#374151';
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(50, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
+      }
+    };
+    
+    drawGrid();
+    
+    // Create an offscreen canvas for the spectrogram
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = width - 50; // Account for left margin
+    offscreenCanvas.height = height;
+    const offCtx = offscreenCanvas.getContext('2d');
+    
+    if (!offCtx) return;
+    
+    // Initialize with black
+    offCtx.fillStyle = '#111827';
+    offCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+
+    const draw = () => {
       // Request next animation frame
       animationRef.current = requestAnimationFrame(draw);
       
       // Get frequency data
       analyser.getByteFrequencyData(dataArray);
       
-      // Clear canvas
-      ctx.clearRect(0, 0, width, height);
+      // Create column image data
+      const columnCanvas = document.createElement('canvas');
+      columnCanvas.width = 1;
+      columnCanvas.height = height;
+      const columnCtx = columnCanvas.getContext('2d');
       
-      // Draw spectrum
-      const barWidth = (width / bufferLength) * 2.5;
-      let x = 0;
+      if (!columnCtx) return;
       
+      // Draw the frequency data to a single column
+      const gradient = columnCtx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, '#6366F1'); // Indigo for high frequencies
+      gradient.addColorStop(0.2, '#3B82F6'); // Blue
+      gradient.addColorStop(0.4, '#10B981'); // Emerald
+      gradient.addColorStop(0.6, '#FBBF24'); // Amber
+      gradient.addColorStop(0.8, '#F59E0B'); // Amber
+      gradient.addColorStop(1, '#EF4444'); // Red for low frequencies
+      
+      columnCtx.fillStyle = '#111827';
+      columnCtx.fillRect(0, 0, 1, height);
+      
+      // Draw the spectrogram column (logarithmic frequency scale)
       for (let i = 0; i < bufferLength; i++) {
-        const barHeight = (dataArray[i] / 255) * height;
-        
-        // Create gradient based on frequency (lower = warm, higher = cool)
-        const hue = i / bufferLength * 240; // 0 (red) to 240 (blue)
-        ctx.fillStyle = `hsl(${hue}, 80%, 50%)`;
-        
-        ctx.fillRect(x, height - barHeight, barWidth, barHeight);
-        x += barWidth + 1;
-        
-        // Stop drawing when we reach the canvas width
-        if (x >= width) break;
+        const value = dataArray[i];
+        if (value > 0) {
+          const intensity = value / 255;
+          
+          // Map frequency bin to y position (logarithmic scale)
+          const freqRatio = i / bufferLength;
+          const logFreq = Math.pow(10, freqRatio * Math.log10(22000));
+          const y = height - (height * Math.log10(logFreq + 1) / Math.log10(22000 + 1));
+          
+          // Draw a small rectangle with color intensity based on value
+          columnCtx.globalAlpha = Math.min(0.8, intensity);
+          columnCtx.fillStyle = gradient;
+          columnCtx.fillRect(0, y - 2, 1, 4);
+        }
       }
+      
+      // Shift previous data to the left
+      offCtx.drawImage(
+        offscreenCanvas, 
+        1, 0, 
+        offscreenCanvas.width - 1, offscreenCanvas.height, 
+        0, 0, 
+        offscreenCanvas.width - 1, offscreenCanvas.height
+      );
+      
+      // Add new column on the right
+      offCtx.drawImage(
+        columnCanvas,
+        0, 0,
+        1, columnCanvas.height,
+        offscreenCanvas.width - 1, 0,
+        1, offscreenCanvas.height
+      );
+      
+      // Draw the complete image to the main canvas
+      drawGrid();
+      ctx.drawImage(offscreenCanvas, 50, 0); // Draw with left margin for labels
     };
     
     draw();

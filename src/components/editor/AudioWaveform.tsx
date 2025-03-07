@@ -18,32 +18,62 @@ export const AudioWaveform = ({ file }: AudioWaveformProps) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
+      // Get canvas dimensions for responsive drawing
+      const width = canvas.width;
+      const height = canvas.height;
+      
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
       // Get the audio data from the first channel
       const audioData = audioBuffer.getChannelData(0);
-      const step = Math.ceil(audioData.length / canvas.width);
-      const amp = canvas.height / 2;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#3B82F6';
+      const step = Math.ceil(audioData.length / width);
+      
+      // Clear canvas with dark background
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, 0, width, height);
+      
+      // Draw center line
+      ctx.strokeStyle = '#374151';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(0, amp);
+      ctx.moveTo(0, height / 2);
+      ctx.lineTo(width, height / 2);
+      ctx.stroke();
 
       // Draw the waveform
-      for (let i = 0; i < canvas.width; i++) {
+      ctx.strokeStyle = '#3B82F6';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+
+      let x = 0;
+      for (let i = 0; i < width; i++) {
         let min = 1.0;
         let max = -1.0;
 
+        // Find min and max in this segment
         for (let j = 0; j < step; j++) {
-          const datum = audioData[i * step + j];
+          const index = Math.min(audioData.length - 1, i * step + j);
+          const datum = audioData[index];
           if (datum < min) min = datum;
           if (datum > max) max = datum;
         }
 
-        ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
+        // Draw vertical line from min to max
+        const y1 = ((1 + min) * height) / 2;
+        const y2 = ((1 + max) * height) / 2;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y1);
+        } else {
+          ctx.lineTo(x, y1);
+        }
+        ctx.lineTo(x, y2);
+        
+        x += 1;
       }
+      
+      ctx.stroke();
     };
 
     const loadAudio = async () => {
@@ -53,15 +83,39 @@ export const AudioWaveform = ({ file }: AudioWaveformProps) => {
         const audioContext = new AudioContext();
         const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
         setAudioBuffer(decodedBuffer);
+        
+        // Set canvas dimensions
+        if (canvasRef.current) {
+          canvasRef.current.width = canvasRef.current.clientWidth;
+          canvasRef.current.height = canvasRef.current.clientHeight;
+        }
+        
         drawWaveform(decodedBuffer);
+        
+        // Clean up
+        audioContext.close();
       } catch (error) {
-        console.error('Error loading audio:', error);
+        console.error('Error loading audio for waveform:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadAudio();
+    
+    // Handle resize
+    const handleResize = () => {
+      if (canvasRef.current && audioBuffer) {
+        canvasRef.current.width = canvasRef.current.clientWidth;
+        canvasRef.current.height = canvasRef.current.clientHeight;
+        drawWaveform(audioBuffer);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, [file]);
 
   return (
@@ -73,8 +127,6 @@ export const AudioWaveform = ({ file }: AudioWaveformProps) => {
           <canvas 
             ref={canvasRef} 
             className="w-full h-full"
-            width={800}
-            height={200}
           />
         )
       ) : (

@@ -20,12 +20,28 @@ export const Preview = ({ file }: PreviewProps) => {
   const [audioSource, setAudioSource] = useState<MediaElementAudioSourceNode | null>(null);
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
 
   // Clean up audio URL when component unmounts or file changes
   useEffect(() => {
     if (file && file.type.includes('audio')) {
       const url = URL.createObjectURL(file);
       setAudioUrl(url);
+      
+      // Load audio buffer for timeline
+      const loadAudioBuffer = async () => {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const tempContext = new AudioContext();
+          const buffer = await tempContext.decodeAudioData(arrayBuffer);
+          setAudioBuffer(buffer);
+          tempContext.close();
+        } catch (error) {
+          console.error("Error loading audio buffer:", error);
+        }
+      };
+      
+      loadAudioBuffer();
       
       return () => {
         URL.revokeObjectURL(url);
@@ -127,6 +143,12 @@ export const Preview = ({ file }: PreviewProps) => {
     if (audioRef.current) {
       audioRef.current.volume = value[0] / 100;
     }
+  };
+
+  // Handle timeline selection
+  const handleTimelineChange = (startTime: number, endTime: number) => {
+    console.log(`Timeline selection: ${startTime}s - ${endTime}s`);
+    // You would implement actual editing functionality here
   };
 
   return (
