@@ -4,15 +4,13 @@ import { BarChart3 } from 'lucide-react';
 
 interface SpectrumAnalysisProps {
   file: File | null;
+  analyser: AnalyserNode | null;
+  isPlaying: boolean;
 }
 
-export const SpectrumAnalysis = ({ file }: SpectrumAnalysisProps) => {
+export const SpectrumAnalysis = ({ file, analyser, isPlaying }: SpectrumAnalysisProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [audioSource, setAudioSource] = useState<MediaElementAudioSourceNode | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -20,71 +18,36 @@ export const SpectrumAnalysis = ({ file }: SpectrumAnalysisProps) => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
-      
-      if (audioContext) {
-        audioContext.close();
-      }
     };
   }, []);
 
   useEffect(() => {
-    if (!file || !file.type.includes('audio')) return;
+    if (!file || !file.type.includes('audio') || !analyser) return;
 
-    const setupAudio = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Clean up previous instances
-        if (animationRef.current) {
-          cancelAnimationFrame(animationRef.current);
-        }
-        
-        if (audioContext) {
-          audioContext.close();
-        }
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    setIsLoading(false);
+    
+    // Only start drawing when playing
+    if (isPlaying) {
+      drawSpectrum();
+    } else if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    
+  }, [file, analyser, isPlaying]);
 
-        // Create new audio context
-        const newAudioContext = new AudioContext();
-        setAudioContext(newAudioContext);
-
-        // Create audio element
-        const audio = new Audio();
-        audio.src = URL.createObjectURL(file);
-        audioRef.current = audio;
-
-        // Create analyser
-        const newAnalyser = newAudioContext.createAnalyser();
-        newAnalyser.fftSize = 2048;
-        setAnalyser(newAnalyser);
-
-        // Create source
-        const source = newAudioContext.createMediaElementSource(audio);
-        setAudioSource(source);
-
-        // Connect nodes
-        source.connect(newAnalyser);
-        newAnalyser.connect(newAudioContext.destination);
-
-        // Start drawing
-        drawSpectrum(newAnalyser);
-      } catch (error) {
-        console.error('Error setting up spectrum analysis:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    setupAudio();
-  }, [file]);
-
-  const drawSpectrum = (analyserNode: AnalyserNode) => {
+  const drawSpectrum = () => {
+    if (!analyser) return;
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const bufferLength = analyserNode.frequencyBinCount;
+    const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     
     const draw = () => {
@@ -96,7 +59,7 @@ export const SpectrumAnalysis = ({ file }: SpectrumAnalysisProps) => {
       animationRef.current = requestAnimationFrame(draw);
       
       // Get frequency data
-      analyserNode.getByteFrequencyData(dataArray);
+      analyser.getByteFrequencyData(dataArray);
       
       // Clear canvas
       ctx.clearRect(0, 0, width, height);

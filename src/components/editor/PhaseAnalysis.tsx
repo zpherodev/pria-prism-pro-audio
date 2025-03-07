@@ -4,15 +4,13 @@ import { CircleOff } from 'lucide-react';
 
 interface PhaseAnalysisProps {
   file: File | null;
+  analyser: AnalyserNode | null;
+  isPlaying: boolean;
 }
 
-export const PhaseAnalysis = ({ file }: PhaseAnalysisProps) => {
+export const PhaseAnalysis = ({ file, analyser, isPlaying }: PhaseAnalysisProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [audioSource, setAudioSource] = useState<MediaElementAudioSourceNode | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -20,71 +18,36 @@ export const PhaseAnalysis = ({ file }: PhaseAnalysisProps) => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
-      
-      if (audioContext) {
-        audioContext.close();
-      }
     };
   }, []);
 
   useEffect(() => {
-    if (!file || !file.type.includes('audio')) return;
+    if (!file || !file.type.includes('audio') || !analyser) return;
 
-    const setupPhaseAnalysis = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Clean up previous instances
-        if (animationRef.current) {
-          cancelAnimationFrame(animationRef.current);
-        }
-        
-        if (audioContext) {
-          audioContext.close();
-        }
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    setIsLoading(false);
+    
+    // Only start drawing when playing
+    if (isPlaying) {
+      drawPhase();
+    } else if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    
+  }, [file, analyser, isPlaying]);
 
-        // Create new audio context
-        const newAudioContext = new AudioContext();
-        setAudioContext(newAudioContext);
-
-        // Create audio element
-        const audio = new Audio();
-        audio.src = URL.createObjectURL(file);
-        audioRef.current = audio;
-
-        // Create analyser for phase
-        const newAnalyser = newAudioContext.createAnalyser();
-        newAnalyser.fftSize = 2048;
-        setAnalyser(newAnalyser);
-
-        // Create source
-        const source = newAudioContext.createMediaElementSource(audio);
-        setAudioSource(source);
-
-        // Connect nodes
-        source.connect(newAnalyser);
-        newAnalyser.connect(newAudioContext.destination);
-
-        // Start drawing
-        drawPhase(newAnalyser);
-      } catch (error) {
-        console.error('Error setting up phase analysis:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    setupPhaseAnalysis();
-  }, [file]);
-
-  const drawPhase = (analyserNode: AnalyserNode) => {
+  const drawPhase = () => {
+    if (!analyser) return;
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const bufferLength = analyserNode.frequencyBinCount;
+    const bufferLength = analyser.frequencyBinCount;
     const timeData = new Uint8Array(bufferLength);
     const freqData = new Uint8Array(bufferLength);
     
@@ -100,8 +63,8 @@ export const PhaseAnalysis = ({ file }: PhaseAnalysisProps) => {
       animationRef.current = requestAnimationFrame(draw);
       
       // Get time domain and frequency data
-      analyserNode.getByteTimeDomainData(timeData);
-      analyserNode.getByteFrequencyData(freqData);
+      analyser.getByteTimeDomainData(timeData);
+      analyser.getByteFrequencyData(freqData);
       
       // Clear canvas
       ctx.clearRect(0, 0, width, height);

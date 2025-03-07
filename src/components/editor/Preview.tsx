@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, AudioLines, BarChart3, CircleOff } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -16,9 +16,60 @@ export const Preview = ({ file }: PreviewProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(75);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const [audioSource, setAudioSource] = useState<MediaElementAudioSourceNode | null>(null);
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+
+  // Initialize audio context and analyzers when file changes
+  useEffect(() => {
+    if (!file || !file.type.includes('audio')) return;
+
+    // Clean up previous audio context
+    if (audioContext) {
+      audioContext.close();
+    }
+
+    const newAudioContext = new AudioContext();
+    setAudioContext(newAudioContext);
+
+    // Create analyser node
+    const newAnalyser = newAudioContext.createAnalyser();
+    newAnalyser.fftSize = 2048;
+    setAnalyser(newAnalyser);
+
+    return () => {
+      if (audioContext) {
+        audioContext.close();
+      }
+    };
+  }, [file]);
+
+  // Connect audio element to audio context when audio element is available
+  useEffect(() => {
+    if (!audioRef.current || !audioContext || !analyser) return;
+
+    // Create source node from audio element
+    const source = audioContext.createMediaElementSource(audioRef.current);
+    setAudioSource(source);
+
+    // Connect nodes: source -> analyser -> destination
+    source.connect(analyser);
+    analyser.connect(audioContext.destination);
+
+    return () => {
+      if (audioSource) {
+        audioSource.disconnect();
+      }
+    };
+  }, [audioRef.current, audioContext, analyser]);
 
   const togglePlayback = () => {
     if (!audioRef.current) return;
+    
+    // Resume audio context if it's suspended (needed for autoplay policies)
+    if (audioContext?.state === 'suspended') {
+      audioContext.resume();
+    }
     
     if (isPlaying) {
       audioRef.current.pause();
@@ -51,7 +102,12 @@ export const Preview = ({ file }: PreviewProps) => {
               step={1}
             />
           </div>
-          <Button variant="ghost" size="icon" onClick={togglePlayback}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={togglePlayback}
+            disabled={!file || !file.type.includes('audio')}
+          >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
         </div>
@@ -79,11 +135,11 @@ export const Preview = ({ file }: PreviewProps) => {
           </TabsContent>
           
           <TabsContent value="spectrum" className="h-full">
-            <SpectrumAnalysis file={file} />
+            <SpectrumAnalysis file={file} analyser={analyser} isPlaying={isPlaying} />
           </TabsContent>
           
           <TabsContent value="phase" className="h-full">
-            <PhaseAnalysis file={file} />
+            <PhaseAnalysis file={file} analyser={analyser} isPlaying={isPlaying} />
           </TabsContent>
         </Tabs>
 
