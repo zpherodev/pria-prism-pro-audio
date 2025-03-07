@@ -35,7 +35,8 @@ export const Preview = ({ file }: PreviewProps) => {
 
   // Initialize audio context when component mounts
   useEffect(() => {
-    const context = new (window.AudioContext || window.webkitAudioContext)();
+    // Fix: Use only AudioContext without the webkit prefix
+    const context = new AudioContext();
     setAudioContext(context);
 
     return () => {
