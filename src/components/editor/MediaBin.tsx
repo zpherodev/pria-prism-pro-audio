@@ -1,6 +1,6 @@
+
 import React from 'react';
-import { Upload } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { Upload, AudioLines } from 'lucide-react';
 
 interface MediaBinProps {
   onFileSelect: (file: File) => void;
@@ -16,19 +16,19 @@ export const MediaBin = ({ onFileSelect }: MediaBinProps) => {
 
   return (
     <div>
-      <h3 className="text-lg font-medium mb-4">Media Bin</h3>
+      <h3 className="text-lg font-medium mb-4">Audio Library</h3>
       <div className="border-2 border-dashed border-editor-text-secondary rounded-lg p-4 text-center">
         <input
           type="file"
           id="file-upload"
           className="hidden"
           onChange={handleFileChange}
-          accept="video/*,audio/*,image/*"
+          accept="audio/*"
         />
         <label htmlFor="file-upload" className="cursor-pointer">
-          <Upload className="mx-auto h-12 w-12 text-editor-text-secondary mb-2" />
+          <AudioLines className="mx-auto h-12 w-12 text-editor-text-secondary mb-2" />
           <p className="text-sm text-editor-text-secondary">
-            Drag & drop files or click to upload
+            Drag & drop audio files or click to upload
           </p>
         </label>
       </div>

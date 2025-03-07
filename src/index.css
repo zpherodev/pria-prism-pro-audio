@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -21,7 +22,11 @@
 }
 
 .preview-window {
-  @apply aspect-video bg-black rounded-lg overflow-hidden;
+  @apply aspect-video bg-black/90 rounded-lg overflow-hidden;
+}
+
+.waveform-display {
+  @apply w-full h-full;
 }
 
 @media (max-width: 768px) {

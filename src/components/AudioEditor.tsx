@@ -1,11 +1,11 @@
+
 import React, { useState } from 'react';
 import { MediaBin } from './editor/MediaBin';
 import { Timeline } from './editor/Timeline';
 import { Preview } from './editor/Preview';
-import { Button } from "@/components/ui/button";
-import { Upload, Play, Pause, Plus, Minus } from 'lucide-react';
+import { AudioLines } from 'lucide-react';
 
-export const VideoEditor = () => {
+export const AudioEditor = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   return (
@@ -17,21 +17,20 @@ export const VideoEditor = () => {
           <MediaBin onFileSelect={setSelectedFile} />
         </div>
 
-        {/* Right Panel - Preview */}
+        {/* Right Panel - Waveform Preview */}
         <div className="panel flex-grow">
           <Preview file={selectedFile} />
         </div>
       </div>
 
-      {/* Timeline Section */}
+      {/* Audio Timeline Section */}
       <div className="panel">
-        <Timeline />
+        <Timeline label="Main Timeline" />
       </div>
 
-      {/* Audio Timeline */}
+      {/* Effects Timeline */}
       <div className="panel">
-        <div className="text-sm font-medium mb-2">Audio Timeline</div>
-        <div className="timeline-track"></div>
+        <Timeline label="Effects Timeline" />
       </div>
     </div>
   );
