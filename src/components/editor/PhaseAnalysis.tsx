@@ -22,24 +22,52 @@ export const PhaseAnalysis = ({ file, analyser, isPlaying }: PhaseAnalysisProps)
   }, []);
 
   useEffect(() => {
-    if (!file || !file.type.includes('audio') || !analyser) return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!file || !file.type.includes('audio')) {
+      return;
+    }
     
     setIsLoading(false);
     
-    // Only start drawing when playing
-    if (isPlaying) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    // Update canvas dimensions to match display size
+    const resizeCanvas = () => {
+      const displayWidth = canvas.clientWidth;
+      const displayHeight = canvas.clientHeight;
+      
+      if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+        canvas.width = displayWidth;
+        canvas.height = displayHeight;
+      }
+    };
+    
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Only start drawing when playing and analyzer is available
+    if (isPlaying && analyser) {
+      console.log("Starting phase visualization");
       drawPhase();
     } else if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
     }
     
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+    };
   }, [file, analyser, isPlaying]);
 
   const drawPhase = () => {
-    if (!analyser) return;
+    if (!analyser) {
+      console.log("No analyzer available for phase");
+      return;
+    }
     
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -121,8 +149,6 @@ export const PhaseAnalysis = ({ file, analyser, isPlaying }: PhaseAnalysisProps)
           <canvas 
             ref={canvasRef} 
             className="w-full h-full"
-            width={800}
-            height={200}
           />
         )
       ) : (

@@ -19,62 +19,103 @@ export const Preview = ({ file }: PreviewProps) => {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [audioSource, setAudioSource] = useState<MediaElementAudioSourceNode | null>(null);
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
-  // Initialize audio context and analyzers when file changes
+  // Clean up audio URL when component unmounts or file changes
   useEffect(() => {
-    if (!file || !file.type.includes('audio')) return;
+    if (file && file.type.includes('audio')) {
+      const url = URL.createObjectURL(file);
+      setAudioUrl(url);
+      
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    }
+  }, [file]);
 
-    // Clean up previous audio context
-    if (audioContext) {
-      audioContext.close();
+  // Initialize audio context when component mounts
+  useEffect(() => {
+    const context = new (window.AudioContext || window.webkitAudioContext)();
+    setAudioContext(context);
+
+    return () => {
+      if (context) {
+        context.close();
+      }
+    };
+  }, []);
+
+  // Set up audio nodes when file or audio context changes
+  useEffect(() => {
+    if (!audioContext || !file || !file.type.includes('audio') || !audioRef.current) return;
+
+    // Make sure previous connections are cleaned up
+    if (audioSource) {
+      audioSource.disconnect();
     }
 
-    const newAudioContext = new AudioContext();
-    setAudioContext(newAudioContext);
-
-    // Create analyser node
-    const newAnalyser = newAudioContext.createAnalyser();
+    // Create analyzer node
+    const newAnalyser = audioContext.createAnalyser();
     newAnalyser.fftSize = 2048;
     setAnalyser(newAnalyser);
 
-    return () => {
-      if (audioContext) {
-        audioContext.close();
+    // Connect audio element to context when it's loaded
+    const handleCanPlay = () => {
+      console.log("Audio can play now, setting up audio graph");
+      
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      // Create source from audio element
+      const source = audioContext.createMediaElementSource(audioRef.current!);
+      setAudioSource(source);
+      
+      // Connect nodes: source -> analyser -> destination
+      source.connect(newAnalyser);
+      newAnalyser.connect(audioContext.destination);
+      
+      // Set initial volume
+      if (audioRef.current) {
+        audioRef.current.volume = volume / 100;
       }
     };
-  }, [file]);
 
-  // Connect audio element to audio context when audio element is available
-  useEffect(() => {
-    if (!audioRef.current || !audioContext || !analyser) return;
-
-    // Create source node from audio element
-    const source = audioContext.createMediaElementSource(audioRef.current);
-    setAudioSource(source);
-
-    // Connect nodes: source -> analyser -> destination
-    source.connect(analyser);
-    analyser.connect(audioContext.destination);
+    // Wait for the audio to be ready before setting up the audio graph
+    if (audioRef.current.readyState >= 2) {
+      // Audio is already loaded
+      handleCanPlay();
+    } else {
+      // Wait for audio to load
+      audioRef.current.addEventListener('canplay', handleCanPlay, { once: true });
+    }
 
     return () => {
-      if (audioSource) {
-        audioSource.disconnect();
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('canplay', handleCanPlay);
       }
     };
-  }, [audioRef.current, audioContext, analyser]);
+  }, [audioContext, file]);
 
   const togglePlayback = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || !audioContext) return;
     
-    // Resume audio context if it's suspended (needed for autoplay policies)
-    if (audioContext?.state === 'suspended') {
-      audioContext.resume();
+    // Resume audio context (needed for autoplay policies)
+    if (audioContext.state === 'suspended') {
+      audioContext.resume().then(() => {
+        console.log("AudioContext resumed");
+      });
     }
     
     if (isPlaying) {
+      console.log("Pausing audio");
       audioRef.current.pause();
     } else {
-      audioRef.current.play();
+      console.log("Playing audio");
+      audioRef.current.play()
+        .catch(error => {
+          console.error("Error playing audio:", error);
+        });
     }
     
     setIsPlaying(!isPlaying);
@@ -143,12 +184,13 @@ export const Preview = ({ file }: PreviewProps) => {
           </TabsContent>
         </Tabs>
 
-        {file && file.type.includes('audio') && (
+        {audioUrl && (
           <audio
             ref={audioRef}
             className="hidden"
-            src={URL.createObjectURL(file)}
+            src={audioUrl}
             onEnded={() => setIsPlaying(false)}
+            preload="auto"
           />
         )}
       </div>
