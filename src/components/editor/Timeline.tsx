@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Plus, Minus, Scissors, MoveHorizontal, Play, Pause, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -8,9 +7,15 @@ interface TimelineProps {
   label?: string;
   audioBuffer?: AudioBuffer | null;
   onTimelineChange?: (startTime: number, endTime: number) => void;
+  multitrack?: boolean;
 }
 
-export const Timeline = ({ label = "Audio Timeline", audioBuffer, onTimelineChange }: TimelineProps) => {
+export const Timeline = ({ 
+  label = "Audio Timeline", 
+  audioBuffer, 
+  onTimelineChange,
+  multitrack = false
+}: TimelineProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
@@ -20,13 +25,25 @@ export const Timeline = ({ label = "Audio Timeline", audioBuffer, onTimelineChan
   const [currentTool, setCurrentTool] = useState<'select' | 'split' | 'move'>('select');
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
+  const [tracks, setTracks] = useState<Array<{ id: string; name: string; color: string }>>([
+    { id: '1', name: 'Main Track', color: '#3B82F6' }
+  ]);
+  const [activeTrack, setActiveTrack] = useState('1');
   
   // Calculate timeline details
   useEffect(() => {
     if (audioBuffer) {
       setDuration(audioBuffer.duration);
+      
+      // Add an effects track if in multitrack mode and we don't already have one
+      if (multitrack && tracks.length === 1) {
+        setTracks([
+          ...tracks,
+          { id: '2', name: 'Effects Track', color: '#10B981' }
+        ]);
+      }
     }
-  }, [audioBuffer]);
+  }, [audioBuffer, multitrack]);
   
   // Draw the timeline
   useEffect(() => {
@@ -40,7 +57,7 @@ export const Timeline = ({ label = "Audio Timeline", audioBuffer, onTimelineChan
     const resizeCanvas = () => {
       if (containerRef.current && canvas) {
         canvas.width = containerRef.current.clientWidth;
-        canvas.height = 80;
+        canvas.height = multitrack ? 120 : 80; // Taller for multitrack view
       }
     };
     
@@ -80,6 +97,35 @@ export const Timeline = ({ label = "Audio Timeline", audioBuffer, onTimelineChan
         // Draw time label
         const time = formatTime(i);
         ctx.fillText(time, x, 25);
+      }
+      
+      // Draw track divisions for multitrack
+      if (multitrack) {
+        const trackHeight = (canvas.height - 30) / tracks.length;
+        
+        tracks.forEach((track, index) => {
+          const yPos = 30 + (index * trackHeight);
+          
+          // Draw track divider
+          ctx.strokeStyle = '#374151';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, yPos);
+          ctx.lineTo(canvas.width, yPos);
+          ctx.stroke();
+          
+          // Draw track label
+          ctx.fillStyle = track.color;
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(track.name, 5, yPos + 15);
+          
+          // Highlight active track
+          if (track.id === activeTrack) {
+            ctx.fillStyle = `${track.color}20`; // 20% opacity
+            ctx.fillRect(0, yPos, canvas.width, trackHeight);
+          }
+        });
       }
       
       // Draw selection if exists
@@ -122,28 +168,65 @@ export const Timeline = ({ label = "Audio Timeline", audioBuffer, onTimelineChan
       ctx.closePath();
       ctx.fill();
       
-      // Draw audio waveform placeholder (would need actual audio data for real waveform)
+      // Draw audio waveform placeholder for each track
       if (audioBuffer) {
-        ctx.strokeStyle = '#60A5FA';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        
-        const centerY = canvas.height / 2 + 15;
-        const amplitude = 20;
-        
-        // Draw fake waveform based on position and zoom (just for visual representation)
-        for (let x = 0; x < canvas.width; x++) {
-          const time = x / pixelsPerSecond;
-          const y = centerY + Math.sin(time * 10) * amplitude * Math.min(0.8, Math.random() + 0.2);
+        if (multitrack) {
+          const trackHeight = (canvas.height - 30) / tracks.length;
           
-          if (x === 0) {
-            ctx.moveTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
+          tracks.forEach((track, index) => {
+            const yPos = 30 + (index * trackHeight);
+            const centerY = yPos + (trackHeight / 2);
+            
+            ctx.strokeStyle = track.color;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            
+            const amplitude = 15;
+            
+            // Different pattern for each track
+            for (let x = 0; x < canvas.width; x++) {
+              const time = x / pixelsPerSecond;
+              let y;
+              
+              if (index === 0) {
+                // Main track - sine wave
+                y = centerY + Math.sin(time * 10) * amplitude * Math.min(0.8, Math.random() + 0.2);
+              } else {
+                // Effects track - more random pattern
+                y = centerY + Math.sin(time * 5) * amplitude * Math.min(0.5, Math.random() + 0.5);
+              }
+              
+              if (x === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            }
+            
+            ctx.stroke();
+          });
+        } else {
+          // Single track view
+          ctx.strokeStyle = '#60A5FA';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          
+          const centerY = canvas.height / 2 + 15;
+          const amplitude = 20;
+          
+          for (let x = 0; x < canvas.width; x++) {
+            const time = x / pixelsPerSecond;
+            const y = centerY + Math.sin(time * 10) * amplitude * Math.min(0.8, Math.random() + 0.2);
+            
+            if (x === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
           }
+          
+          ctx.stroke();
         }
-        
-        ctx.stroke();
       }
     };
     
@@ -153,7 +236,7 @@ export const Timeline = ({ label = "Audio Timeline", audioBuffer, onTimelineChan
     return () => {
       window.removeEventListener('resize', resizeCanvas);
     };
-  }, [zoom, position, selection, audioBuffer, duration, currentTool]);
+  }, [zoom, position, selection, audioBuffer, duration, currentTool, multitrack, tracks, activeTrack]);
   
   // Helper to get appropriate seconds between markers based on zoom
   const getSecondsBetweenMarkers = (zoom: number) => {
@@ -180,9 +263,20 @@ export const Timeline = ({ label = "Audio Timeline", audioBuffer, onTimelineChan
     
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     const secondsVisible = duration / zoom;
     const pixelsPerSecond = canvasRef.current.width / secondsVisible;
     const clickTimePosition = x / pixelsPerSecond;
+    
+    // Check if we're in the track selection area for multitrack
+    if (multitrack && y > 30) {
+      const trackHeight = (canvasRef.current.height - 30) / tracks.length;
+      const trackIndex = Math.floor((y - 30) / trackHeight);
+      
+      if (trackIndex >= 0 && trackIndex < tracks.length) {
+        setActiveTrack(tracks[trackIndex].id);
+      }
+    }
     
     if (currentTool === 'select') {
       setSelection({ start: clickTimePosition, end: null });
@@ -331,7 +425,8 @@ export const Timeline = ({ label = "Audio Timeline", audioBuffer, onTimelineChan
       
       <div 
         ref={containerRef} 
-        className="relative w-full h-20 border border-gray-700 rounded-md overflow-hidden"
+        className="relative w-full border border-gray-700 rounded-md overflow-hidden"
+        style={{ height: multitrack ? '120px' : '80px' }}
       >
         <canvas 
           ref={canvasRef}

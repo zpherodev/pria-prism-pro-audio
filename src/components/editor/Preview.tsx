@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, AudioLines, BarChart3, CircleOff } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -10,9 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PreviewProps {
   file: File | null;
+  onAudioBufferLoaded?: (buffer: AudioBuffer) => void;
 }
 
-export const Preview = ({ file }: PreviewProps) => {
+export const Preview = ({ file, onAudioBufferLoaded }: PreviewProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(75);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -35,6 +35,12 @@ export const Preview = ({ file }: PreviewProps) => {
           const tempContext = new AudioContext();
           const buffer = await tempContext.decodeAudioData(arrayBuffer);
           setAudioBuffer(buffer);
+          
+          // Notify parent about the loaded buffer
+          if (onAudioBufferLoaded) {
+            onAudioBufferLoaded(buffer);
+          }
+          
           tempContext.close();
         } catch (error) {
           console.error("Error loading audio buffer:", error);
@@ -47,11 +53,10 @@ export const Preview = ({ file }: PreviewProps) => {
         URL.revokeObjectURL(url);
       };
     }
-  }, [file]);
+  }, [file, onAudioBufferLoaded]);
 
   // Initialize audio context when component mounts
   useEffect(() => {
-    // Fix: Use only AudioContext without the webkit prefix
     const context = new AudioContext();
     setAudioContext(context);
 
