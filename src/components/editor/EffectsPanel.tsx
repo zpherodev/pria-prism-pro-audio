@@ -81,7 +81,7 @@ export const EffectsPanel = ({
   };
   return <div className="h-full flex flex-col">
       <Tabs defaultValue="eq" className="w-full flex-grow">
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 bg-zinc-800 rounded-full">
           <TabsTrigger value="eq" className="flex items-center gap-1">
             <Sliders className="h-4 w-4" />
             <span>EQ</span>
