@@ -1,13 +1,16 @@
+
 import React, { useRef, useEffect, useState } from 'react';
-import { Plus, Minus, Scissors, MoveHorizontal, Play, Pause, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Plus, Minus, Scissors, MoveHorizontal, Play, Pause, ChevronRight, ChevronLeft, Volume2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+
 interface TimelineProps {
   label?: string;
   audioBuffer?: AudioBuffer | null;
   onTimelineChange?: (startTime: number, endTime: number) => void;
   multitrack?: boolean;
 }
+
 export const Timeline = ({
   label = "Audio Timeline",
   audioBuffer,
@@ -30,11 +33,8 @@ export const Timeline = ({
     id: string;
     name: string;
     color: string;
-  }>>([{
-    id: '1',
-    name: 'Main Track',
-    color: '#3B82F6'
-  }]);
+    gain: number;
+  }>>([]);
   const [activeTrack, setActiveTrack] = useState('1');
 
   // Calculate timeline details
@@ -42,16 +42,50 @@ export const Timeline = ({
     if (audioBuffer) {
       setDuration(audioBuffer.duration);
 
-      // Add an effects track if in multitrack mode and we don't already have one
-      if (multitrack && tracks.length === 1) {
-        setTracks([...tracks, {
-          id: '2',
-          name: 'Effects Track',
-          color: '#10B981'
-        }]);
+      // Initialize with main track and 4 additional blank tracks if in multitrack mode
+      if (multitrack && tracks.length === 0) {
+        setTracks([
+          {
+            id: '1',
+            name: 'Main Track',
+            color: '#3B82F6',
+            gain: 0
+          },
+          {
+            id: '2',
+            name: 'Vocal Track',
+            color: '#10B981',
+            gain: 0
+          },
+          {
+            id: '3',
+            name: 'Drums Track',
+            color: '#EF4444',
+            gain: 0
+          },
+          {
+            id: '4',
+            name: 'Bass Track',
+            color: '#F59E0B',
+            gain: 0
+          },
+          {
+            id: '5',
+            name: 'Effects Track',
+            color: '#8B5CF6',
+            gain: 0
+          }
+        ]);
       }
     }
   }, [audioBuffer, multitrack]);
+
+  // Update gain for a specific track
+  const handleGainChange = (trackId: string, newGain: number) => {
+    setTracks(tracks.map(track => 
+      track.id === trackId ? { ...track, gain: newGain } : track
+    ));
+  };
 
   // Draw the timeline
   useEffect(() => {
@@ -63,8 +97,8 @@ export const Timeline = ({
     // Set canvas size
     const resizeCanvas = () => {
       if (containerRef.current && canvas) {
-        canvas.width = containerRef.current.clientWidth;
-        canvas.height = multitrack ? 120 : 80; // Taller for multitrack view
+        canvas.width = containerRef.current.clientWidth - (multitrack ? 120 : 0); // Subtract track column width
+        canvas.height = multitrack ? 200 : 80; // Taller for multitrack view with 5 tracks
       }
     };
     resizeCanvas();
@@ -104,8 +138,9 @@ export const Timeline = ({
       }
 
       // Draw track divisions for multitrack
-      if (multitrack) {
+      if (multitrack && tracks.length > 0) {
         const trackHeight = (canvas.height - 30) / tracks.length;
+        
         tracks.forEach((track, index) => {
           const yPos = 30 + index * trackHeight;
 
@@ -116,12 +151,6 @@ export const Timeline = ({
           ctx.moveTo(0, yPos);
           ctx.lineTo(canvas.width, yPos);
           ctx.stroke();
-
-          // Draw track label
-          ctx.fillStyle = track.color;
-          ctx.font = '10px sans-serif';
-          ctx.textAlign = 'left';
-          ctx.fillText(track.name, 5, yPos + 15);
 
           // Highlight active track
           if (track.id === activeTrack) {
@@ -169,8 +198,9 @@ export const Timeline = ({
 
       // Draw audio waveform placeholder for each track
       if (audioBuffer) {
-        if (multitrack) {
+        if (multitrack && tracks.length > 0) {
           const trackHeight = (canvas.height - 30) / tracks.length;
+          
           tracks.forEach((track, index) => {
             const yPos = 30 + index * trackHeight;
             const centerY = yPos + trackHeight / 2;
@@ -186,9 +216,18 @@ export const Timeline = ({
               if (index === 0) {
                 // Main track - sine wave
                 y = centerY + Math.sin(time * 10) * amplitude * Math.min(0.8, Math.random() + 0.2);
+              } else if (index === 1) {
+                // Vocal track - more peaks
+                y = centerY + Math.sin(time * 15) * amplitude * Math.min(0.6, Math.random() + 0.4);
+              } else if (index === 2) {
+                // Drums track - spike pattern
+                y = centerY + Math.sin(time * 20) * amplitude * Math.min(0.7, Math.random() + 0.3);
+              } else if (index === 3) {
+                // Bass track - slower waves
+                y = centerY + Math.sin(time * 5) * amplitude * Math.min(0.9, Math.random() + 0.1);
               } else {
-                // Effects track - more random pattern
-                y = centerY + Math.sin(time * 5) * amplitude * Math.min(0.5, Math.random() + 0.5);
+                // Effects track - random pattern
+                y = centerY + Math.sin(time * 8) * amplitude * Math.min(0.5, Math.random() + 0.5);
               }
               if (x === 0) {
                 ctx.moveTo(x, y);
@@ -329,7 +368,9 @@ export const Timeline = ({
   const jumpForward = () => {
     setPosition(Math.min(duration, position + 5));
   };
-  return <div className="timeline-container">
+  
+  return (
+    <div className="timeline-container">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-medium">{label}</h3>
@@ -368,10 +409,61 @@ export const Timeline = ({
         </div>
       </div>
       
-      <div ref={containerRef} style={{
-      height: multitrack ? '120px' : '80px'
-    }} className="relative w-full h-40 border border-gray-700 rounded-md overflow-hidden bg-zinc-800">
-        <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} className="w-full h-10 cursor-text my-0 float-right py-0 mx-0 rounded-lg bg-zinc-600 pl-[11px] pb-[5px]" />
+      <div className="flex">
+        {multitrack && tracks.length > 0 && (
+          <div className="track-info w-28 mr-2">
+            {/* Track header */}
+            <div className="h-[30px] flex items-center">
+              <div className="text-xs font-semibold text-gray-400 pl-2 pb-2">Track # / Gain</div>
+            </div>
+            
+            {/* Track rows */}
+            {tracks.map((track, index) => (
+              <div 
+                key={track.id}
+                className={`flex flex-col justify-center p-1 h-[34px] border-b border-gray-700 cursor-pointer ${track.id === activeTrack ? 'bg-blue-900/20' : ''}`}
+                onClick={() => setActiveTrack(track.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div 
+                      className="w-3 h-3 rounded-full mr-1" 
+                      style={{ backgroundColor: track.color }}
+                    ></div>
+                    <span className="text-xs">{index + 1}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Volume2 className="h-3 w-3 text-gray-400" />
+                    <Slider 
+                      className="w-10 h-3" 
+                      value={[track.gain]} 
+                      min={-12}
+                      max={12}
+                      step={0.1}
+                      onValueChange={(values) => handleGainChange(track.id, values[0])}
+                    />
+                    <span className="text-xs w-6 text-right">{track.gain}dB</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div ref={containerRef} 
+          style={{ height: multitrack && tracks.length > 0 ? '200px' : '80px' }}
+          className="relative w-full border border-gray-700 rounded-md overflow-hidden bg-zinc-800"
+        >
+          <canvas 
+            ref={canvasRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            className="w-full h-full cursor-text"
+          />
+        </div>
       </div>
-    </div>;
+    </div>
+  );
 };
