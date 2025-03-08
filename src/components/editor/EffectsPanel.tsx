@@ -201,7 +201,7 @@ export const EffectsPanel = ({
                 <Slider value={[reverb]} onValueChange={values => setReverb(values[0])} min={0} max={100} step={1} />
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-1 px-1 py-0 rounded-full border-b bg-zinc-800">
                 <div className="flex justify-between">
                   <label className="text-xs">Delay</label>
                   <span className="text-xs">{delay}ms</span>
