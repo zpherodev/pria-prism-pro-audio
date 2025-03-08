@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Sliders, AudioWaveform, Filter, Mic2, Music4 } from 'lucide-react';
 import { Slider } from "@/components/ui/slider";
@@ -114,7 +113,7 @@ export const EffectsPanel = ({ audioBuffer }: EffectsPanelProps) => {
         
         <TabsContent value="dynamics" className="space-y-4">
           <div className="flex flex-col items-center justify-center h-32 text-gray-400">
-            <Waveform className="h-8 w-8 mb-2" />
+            <AudioWaveform className="h-8 w-8 mb-2" />
             <p>Compression, Limiter, and Gate controls would be here</p>
           </div>
           
