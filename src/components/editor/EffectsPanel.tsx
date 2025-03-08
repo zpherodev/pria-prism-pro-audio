@@ -245,7 +245,7 @@ export const EffectsPanel = ({
             <div className="space-y-2 mt-4 border-t border-gray-700 pt-4">
               <h3 className="text-sm font-medium">Time & Pitch Manipulation</h3>
               
-              <div className="space-y-2">
+              <div className="space-y-2 border-b rounded-xl py-[9px]">
                 <div className="flex justify-between">
                   <label className="text-xs">Time Stretch</label>
                   <span className="text-xs">x{timeStretch.toFixed(2)}</span>
@@ -262,7 +262,7 @@ export const EffectsPanel = ({
               </div>
             </div>
             
-            <Button className="w-full mt-4" onClick={() => handleApplyEffect('time and effects')} disabled={!audioBuffer}>
+            <Button onClick={() => handleApplyEffect('time and effects')} disabled={!audioBuffer} className="w-full mt-4 rounded-full border py-[21px] font-bold text-zinc-50 bg-zinc-800 hover:bg-zinc-700 text-center">
               Apply Effects
             </Button>
           </TabsContent>
