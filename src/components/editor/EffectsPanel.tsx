@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Sliders, Waveform, Filter, Mic2, Music4 } from 'lucide-react';
+import { Sliders, AudioWaveform, Filter, Mic2, Music4 } from 'lucide-react';
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,7 +31,7 @@ export const EffectsPanel = ({ audioBuffer }: EffectsPanelProps) => {
             <span>EQ</span>
           </TabsTrigger>
           <TabsTrigger value="dynamics" className="flex items-center gap-1">
-            <Waveform className="h-4 w-4" />
+            <AudioWaveform className="h-4 w-4" />
             <span>Dynamics</span>
           </TabsTrigger>
           <TabsTrigger value="effects" className="flex items-center gap-1">
