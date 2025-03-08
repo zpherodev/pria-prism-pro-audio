@@ -129,7 +129,7 @@ export const EffectsPanel = ({
             <div className="space-y-4 border border-gray-700 rounded-md p-3">
               <h3 className="text-sm font-medium">Compressor</h3>
               
-              <div className="space-y-2">
+              <div className="space-y-2 border-b rounded-xl py-[9px]">
                 <div className="flex justify-between">
                   <label className="text-xs">Threshold</label>
                   <span className="text-xs">{threshold}dB</span>
@@ -137,7 +137,7 @@ export const EffectsPanel = ({
                 <Slider value={[threshold]} onValueChange={values => setThreshold(values[0])} min={-60} max={0} step={0.1} />
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-2 border-b rounded-xl py-[9px]">
                 <div className="flex justify-between">
                   <label className="text-xs">Ratio</label>
                   <span className="text-xs">{ratio}:1</span>
@@ -145,7 +145,7 @@ export const EffectsPanel = ({
                 <Slider value={[ratio]} onValueChange={values => setRatio(values[0])} min={1} max={20} step={0.1} />
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-2 border-b rounded-xl py-[9px]">
                 <div className="flex justify-between">
                   <label className="text-xs">Attack</label>
                   <span className="text-xs">{attack * 1000}ms</span>
@@ -153,7 +153,7 @@ export const EffectsPanel = ({
                 <Slider value={[attack]} onValueChange={values => setAttack(values[0])} min={0.001} max={0.5} step={0.001} />
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-2 border-b rounded-xl py-[9px]">
                 <div className="flex justify-between">
                   <label className="text-xs">Release</label>
                   <span className="text-xs">{release * 1000}ms</span>
@@ -161,7 +161,7 @@ export const EffectsPanel = ({
                 <Slider value={[release]} onValueChange={values => setRelease(values[0])} min={0.01} max={2} step={0.01} />
               </div>
               
-              <Button size="sm" className="w-full mt-2" onClick={() => handleApplyEffect('compressor')} disabled={!audioBuffer}>
+              <Button size="sm" onClick={() => handleApplyEffect('compressor')} disabled={!audioBuffer} className="w-full mt-2 rounded-full border bg-zinc-700 hover:bg-zinc-600">
                 Apply Compressor
               </Button>
             </div>
@@ -169,7 +169,7 @@ export const EffectsPanel = ({
             <div className="space-y-4 border border-gray-700 rounded-md p-3">
               <h3 className="text-sm font-medium">Limiter</h3>
               
-              <div className="space-y-2">
+              <div className="space-y-2 border-b rounded-xl py-[9px]">
                 <div className="flex justify-between">
                   <label className="text-xs">Threshold</label>
                   <span className="text-xs">{limiterThreshold}dB</span>
@@ -177,7 +177,7 @@ export const EffectsPanel = ({
                 <Slider value={[limiterThreshold]} onValueChange={values => setLimiterThreshold(values[0])} min={-30} max={0} step={0.1} />
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-2 border-b rounded-xl py-[9px]">
                 <div className="flex justify-between">
                   <label className="text-xs">Release</label>
                   <span className="text-xs">{limiterRelease * 1000}ms</span>
@@ -185,7 +185,7 @@ export const EffectsPanel = ({
                 <Slider value={[limiterRelease]} onValueChange={values => setLimiterRelease(values[0])} min={0.01} max={1} step={0.01} />
               </div>
               
-              <Button size="sm" className="w-full mt-2" onClick={() => handleApplyEffect('limiter')} disabled={!audioBuffer}>
+              <Button size="sm" onClick={() => handleApplyEffect('limiter')} disabled={!audioBuffer} className="w-full mt-2 bg-zinc-700 hover:bg-zinc-600 rounded-full border py-0 my-[12px]">
                 Apply Limiter
               </Button>
             </div>
