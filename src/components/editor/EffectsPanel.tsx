@@ -193,48 +193,48 @@ export const EffectsPanel = ({
           
           <TabsContent value="effects" className="space-y-4 pr-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 border-b bg-zinc-800">
-                <div className="flex justify-between">
+              <div className="border-b px-1 mx-1 py-0 rounded-xl bg-gray-900">
+                <div className="flex justify-between py-[9px] px-[9px]">
                   <label className="text-xs">Reverb</label>
                   <span className="text-xs">{reverb}%</span>
                 </div>
                 <Slider value={[reverb]} onValueChange={values => setReverb(values[0])} min={0} max={100} step={1} />
               </div>
               
-              <div className="space-y-1 px-1 py-0 rounded-full border-b bg-zinc-800">
-                <div className="flex justify-between">
+              <div className="px-1 py-0 border-b rounded-xl bg-gray-800">
+                <div className="flex justify-between px-[10px] py-[10px] my-0">
                   <label className="text-xs">Delay</label>
                   <span className="text-xs">{delay}ms</span>
                 </div>
                 <Slider value={[delay]} onValueChange={values => setDelay(values[0])} min={0} max={500} step={5} />
               </div>
               
-              <div className="space-y-2">
-                <div className="flex justify-between">
+              <div className="space-y-2 rounded-xl border-b bg-emerald-950 my-0 mx-0">
+                <div className="flex justify-between mx-[12px] my-[8px] py-[4px]">
                   <label className="text-xs">Flanger</label>
                   <span className="text-xs">{flanger}%</span>
                 </div>
                 <Slider value={[flanger]} onValueChange={values => setFlanger(values[0])} min={0} max={100} step={1} />
               </div>
               
-              <div className="space-y-2">
-                <div className="flex justify-between">
+              <div className="space-y-2 rounded-xl bg-gray-700 border-b py-0">
+                <div className="flex justify-between py-[8px] px-[12px]">
                   <label className="text-xs">Echo</label>
                   <span className="text-xs">{echo}%</span>
                 </div>
                 <Slider value={[echo]} onValueChange={values => setEcho(values[0])} min={0} max={100} step={1} />
               </div>
               
-              <div className="space-y-2">
-                <div className="flex justify-between">
+              <div className="space-y-2 border-b rounded-xl bg-pink-900">
+                <div className="flex justify-between px-[16px] my-[9px] py-0">
                   <label className="text-xs">Distortion</label>
                   <span className="text-xs">{distortion}%</span>
                 </div>
                 <Slider value={[distortion]} onValueChange={values => setDistortion(values[0])} min={0} max={100} step={1} />
               </div>
               
-              <div className="space-y-2">
-                <div className="flex justify-between">
+              <div className="space-y-2 rounded-xl border-b px-[4px] bg-purple-900">
+                <div className="flex justify-between mx-[12px] py-[5px]">
                   <label className="text-xs">Wah-Wah</label>
                   <span className="text-xs">{wahwah}%</span>
                 </div>
