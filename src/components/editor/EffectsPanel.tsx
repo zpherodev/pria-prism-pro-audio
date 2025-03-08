@@ -192,7 +192,7 @@ export const EffectsPanel = ({
           </TabsContent>
           
           <TabsContent value="effects" className="space-y-4 pr-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 py-[15px] mx-[5px] px-[6px] bg-zinc-800 rounded-xl border-zinc-600 shadow ">
               <div className="border-b px-1 mx-1 py-0 rounded-xl bg-gray-900">
                 <div className="flex justify-between py-[9px] px-[9px]">
                   <label className="text-xs">Reverb</label>
@@ -253,7 +253,7 @@ export const EffectsPanel = ({
                 <Slider value={[timeStretch]} onValueChange={values => setTimeStretch(values[0])} min={0.5} max={2} step={0.01} />
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-2 border-b rounded-xl py-[9px]">
                 <div className="flex justify-between">
                   <label className="text-xs">Pitch Shift</label>
                   <span className="text-xs">{pitchShift > 0 ? '+' : ''}{pitchShift} semitones</span>
