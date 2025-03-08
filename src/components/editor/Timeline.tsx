@@ -368,9 +368,9 @@ export const Timeline = ({
         </div>
       </div>
       
-      <div ref={containerRef} className="relative w-full border border-gray-700 rounded-md overflow-hidden" style={{
+      <div ref={containerRef} style={{
       height: multitrack ? '120px' : '80px'
-    }}>
+    }} className="relative w-full h-40 border border-gray-700 rounded-md overflow-hidden bg-zinc-800">
         <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} className="w-full h-10 cursor-text my-0 bg-zinc-800 py-0 mx-0" />
       </div>
     </div>;
