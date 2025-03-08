@@ -101,8 +101,8 @@ export const EffectsPanel = ({
         </TabsList>
         
         <ScrollArea className="h-[calc(100%-40px)]">
-          <TabsContent value="eq" className="space-y-4 pr-4">
-            <div className="space-y-2">
+          <TabsContent value="eq" className="spac pr-0">
+            <div className="space-y-2 border-b rounded-xl py-[9px]">
               <div className="flex justify-between">
                 <label className="text-sm">Master Gain</label>
                 <span className="text-sm">{gain}dB</span>
@@ -110,8 +110,8 @@ export const EffectsPanel = ({
               <Slider value={[gain]} onValueChange={values => setGain(values[0])} min={-12} max={12} step={0.1} />
             </div>
             
-            <div className="mt-6 flex justify-between">
-              {eqValues.map((band, index) => <div key={index} className="flex flex-col items-center">
+            <div className="mt-6 flex justify-between bg-zinc-800 align-left py-px mx-0 rounded-xl px-[4px]">
+              {eqValues.map((band, index) => <div key={index} className="flex flex-col items-center rounded-md border-r pr-1 ml-1 mx-0 bg-zinc-950">
                   <div className="h-48 flex items-center">
                     <Slider value={[band.value]} onValueChange={values => handleEqChange(index, values[0])} min={-12} max={12} step={0.1} orientation="vertical" />
                   </div>
@@ -120,7 +120,7 @@ export const EffectsPanel = ({
                 </div>)}
             </div>
             
-            <Button className="w-full mt-4" onClick={() => handleApplyEffect('equalizer')} disabled={!audioBuffer}>
+            <Button onClick={() => handleApplyEffect('equalizer')} disabled={!audioBuffer} className="w-full mt-4 bg-zinc-700 hover:bg-zinc-600 border rounded-full">
               Apply EQ
             </Button>
           </TabsContent>
