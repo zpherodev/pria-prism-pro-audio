@@ -125,11 +125,11 @@ export const EffectsPanel = ({
             </Button>
           </TabsContent>
           
-          <TabsContent value="dynamics" className="space-y-6 pr-4">
-            <div className="space-y-4 border border-gray-700 rounded-md p-3">
+          <TabsContent value="dynamics" className="space-y-6 pr-4 mx-0">
+            <div className="space-y-4 border border-gray-700 rounded-md p-3 px-[34px]">
               <h3 className="text-sm font-medium">Compressor</h3>
               
-              <div className="space-y-2 border-b rounded-xl py-[9px]">
+              <div className="space-y-2 border-b rounded-xl py-0 px-0">
                 <div className="flex justify-between">
                   <label className="text-xs">Threshold</label>
                   <span className="text-xs">{threshold}dB</span>
