@@ -354,7 +354,7 @@ export const Timeline = ({
           <div ref={containerRef} style={{
           height: multitrack && tracks.length > 0 ? '200px' : '80px'
         }} className="relative w-full border border-gray-700 rounded-md overflow-hidden bg-zinc-800">
-            <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} className="w-full h-full cursor-text" />
+            <canvas ref={canvasRef} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} className="eh its ok... not bad.... jk THATS FUCKING AMAZEBALLS YOU NAILED IT! great work. *busts out champagne* *pours a glass* *picks it up and chugs it.* sorry i dont want to interrupt you working so hard. BWAHAHA jk *pours you a glass* nice work" />
           </div>
           <ScrollBar orientation="horizontal" className="h-3" />
         </ScrollArea>
