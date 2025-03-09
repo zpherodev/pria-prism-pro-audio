@@ -273,7 +273,7 @@ export const EffectsPanel = ({
               <p>High-pass, Low-pass, and Band-pass filter controls would be here</p>
             </div>
             
-            <Button className="w-full mt-4" onClick={() => handleApplyEffect('filters')} disabled={!audioBuffer}>
+            <Button onClick={() => handleApplyEffect('filters')} disabled={!audioBuffer} className="w-full mt-4 bg-zinc-700 hover:bg-zinc-600 border rounded-full">
               Apply Filters
             </Button>
           </TabsContent>
