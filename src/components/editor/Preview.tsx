@@ -155,7 +155,7 @@ export const Preview = ({
             <Volume2 className="h-8 w-8 text-editor-text-secondary rounded-full px-[3px] border bg-zinc-700" />
             <Slider className="w-24" value={[volume]} onValueChange={handleVolumeChange} max={100} step={1} />
           </div>
-          <Button variant="ghost" size="icon" onClick={togglePlayback} disabled={!file || !file.type.includes('audio')}>
+          <Button variant="ghost" size="icon" onClick={togglePlayback} disabled={!file || !file.type.includes('audio')} className="bg-zinc-600 hover:bg-zinc-500">
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
         </div>
