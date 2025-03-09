@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Sliders, AudioWaveform, Filter, Music4, BadgePlus, ChevronsUpDown, BadgePercent } from 'lucide-react';
 import { Slider, VerticalSlider } from "@/components/ui/slider";
@@ -10,18 +9,18 @@ interface EffectsPanelProps {
   audioBuffer: AudioBuffer | null;
 }
 
-// 10-band EQ frequency presets
+// Professional 10-band EQ frequency presets with more precise frequencies
 const eqBands = [{
-  freq: "20Hz",
+  freq: "31Hz",
   value: 0
 }, {
-  freq: "30Hz",
+  freq: "63Hz",
   value: 0
 }, {
-  freq: "50Hz",
+  freq: "125Hz",
   value: 0
 }, {
-  freq: "100Hz",
+  freq: "250Hz",
   value: 0
 }, {
   freq: "500Hz",
@@ -30,16 +29,16 @@ const eqBands = [{
   freq: "1kHz",
   value: 0
 }, {
-  freq: "3kHz",
+  freq: "2kHz",
   value: 0
 }, {
-  freq: "6kHz",
+  freq: "4kHz",
   value: 0
 }, {
-  freq: "10kHz",
+  freq: "8kHz",
   value: 0
 }, {
-  freq: "20kHz",
+  freq: "16kHz",
   value: 0
 }];
 
@@ -84,6 +83,9 @@ export const EffectsPanel = ({
     // In a real implementation, this would apply audio effects to the selected track
   };
 
+  // Fixed discrete points for dB markers
+  const dbMarkers = [12, 8, 4, 0, -4, -8, -12];
+
   return <div className="h-full flex flex-col">
       <Tabs defaultValue="eq" className="w-full flex-grow">
         <TabsList className="mb-4 bg-zinc-800 rounded-full">
@@ -115,35 +117,86 @@ export const EffectsPanel = ({
               <Slider value={[gain]} onValueChange={values => setGain(values[0])} min={-12} max={12} step={0.1} />
             </div>
             
-            {/* Improved EQ bands layout with labels outside sliders */}
-            <div className="mt-4 flex flex-col bg-zinc-800 px-2 py-4 rounded-md">
-              <div className="flex justify-between items-end w-full h-48 mb-3">
-                {eqValues.map((band, index) => (
-                  <div key={index} className="flex flex-col items-center justify-center" style={{ width: '9%' }}>
-                    <VerticalSlider 
-                      value={[band.value]} 
-                      onValueChange={values => handleEqChange(index, values[0])} 
-                      min={-12} 
-                      max={12} 
-                      step={0.1}
-                      className="h-full"
-                    />
+            {/* Professional EQ visualization with vertical markers */}
+            <div className="mt-4 flex flex-col bg-zinc-900 px-2 py-4 rounded-md border border-zinc-700">
+              <h3 className="text-center text-sm font-medium text-zinc-400 mb-2">10-Band Graphic Equalizer</h3>
+              
+              {/* dB scale on the left */}
+              <div className="flex">
+                <div className="w-8 flex flex-col justify-between h-48 pr-1 border-r border-zinc-700">
+                  {dbMarkers.map(db => (
+                    <div key={`db-${db}`} className="flex items-center">
+                      <span className="text-[9px] text-zinc-400 ml-auto">{db > 0 ? '+' : ''}{db}</span>
+                      <div className="h-[1px] w-2 bg-zinc-700 ml-1"></div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* EQ sliders */}
+                <div className="flex-1">
+                  <div className="flex justify-between items-stretch w-full h-48 relative">
+                    {/* Horizontal grid lines */}
+                    {dbMarkers.map(db => (
+                      <div 
+                        key={`grid-${db}`} 
+                        className="absolute w-full h-[1px] bg-zinc-800"
+                        style={{ 
+                          top: `${((12-db)/24) * 100}%`
+                        }}
+                      ></div>
+                    ))}
+                    
+                    {/* Center line (0 dB) highlighted */}
+                    <div 
+                      className="absolute w-full h-[1px] bg-zinc-600"
+                      style={{ top: '50%' }}
+                    ></div>
+                    
+                    {/* EQ sliders */}
+                    {eqValues.map((band, index) => (
+                      <div key={index} className="flex flex-col items-center justify-center" style={{ width: '10%' }}>
+                        <VerticalSlider 
+                          value={[band.value]} 
+                          onValueChange={values => handleEqChange(index, values[0])} 
+                          min={-12} 
+                          max={12} 
+                          step={1}
+                          className="h-full"
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
               
               {/* Frequency labels below sliders */}
-              <div className="flex justify-between items-center w-full">
+              <div className="flex justify-between items-center w-full pl-8 mt-2 border-t border-zinc-700 pt-2">
                 {eqValues.map((band, index) => (
-                  <div key={`label-${index}`} className="flex flex-col items-center justify-center" style={{ width: '9%' }}>
-                    <span className="text-[9px] text-gray-50 text-center w-full truncate">{band.freq}</span>
-                    <span className="text-[9px] text-gray-400">{band.value}dB</span>
+                  <div key={`label-${index}`} className="flex flex-col items-center justify-center" style={{ width: '10%' }}>
+                    <span className="text-[9px] text-zinc-300 text-center w-full">{band.freq}</span>
+                    <span className="text-[8px] text-blue-400">{band.value > 0 ? '+' : ''}{band.value}dB</span>
                   </div>
                 ))}
               </div>
             </div>
             
-            <Button onClick={() => handleApplyEffect('equalizer')} disabled={!audioBuffer} className="w-full mt-4 bg-zinc-700 hover:bg-zinc-600 border rounded-full">
+            {/* Preset buttons */}
+            <div className="flex gap-2 mt-4">
+              <Button variant="outline" size="sm" className="text-xs flex-1 bg-zinc-800 border-zinc-700 hover:bg-zinc-700">
+                Flat
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs flex-1 bg-zinc-800 border-zinc-700 hover:bg-zinc-700">
+                Bass Boost
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs flex-1 bg-zinc-800 border-zinc-700 hover:bg-zinc-700">
+                Vocal
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs flex-1 bg-zinc-800 border-zinc-700 hover:bg-zinc-700">
+                Custom
+              </Button>
+            </div>
+            
+            <Button onClick={() => handleApplyEffect('equalizer')} disabled={!audioBuffer} className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full">
               Apply EQ
             </Button>
           </TabsContent>
@@ -152,7 +205,7 @@ export const EffectsPanel = ({
             <div className="space-y-4 border border-gray-700 rounded-md p-3 px-[34px]">
               <h3 className="text-sm font-medium">Compressor</h3>
               
-              <div className="space-y-2 border-b rounded-xl py-0 px-0">
+              <div className="space-y-2 border-b rounded-xl py-[9px]">
                 <div className="flex justify-between">
                   <label className="text-xs">Threshold</label>
                   <span className="text-xs">{threshold}dB</span>

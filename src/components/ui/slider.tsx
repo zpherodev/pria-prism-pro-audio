@@ -24,7 +24,7 @@ const Slider = React.forwardRef<
 ))
 Slider.displayName = SliderPrimitive.Root.displayName
 
-// Optimized vertical slider with thinner track centered in its container
+// Enhanced vertical slider with visual elements resembling professional equalizers
 const VerticalSlider = React.forwardRef<
   React.ElementRef<typeof SliderPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
@@ -38,10 +38,10 @@ const VerticalSlider = React.forwardRef<
     )}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-full w-1 grow overflow-hidden rounded-full bg-secondary">
-      <SliderPrimitive.Range className="absolute w-full bg-primary" />
+    <SliderPrimitive.Track className="relative h-full w-[2px] grow overflow-hidden rounded-full bg-zinc-700 shadow-inner">
+      <SliderPrimitive.Range className="absolute w-full bg-blue-400 shadow-[0_0_5px_rgba(59,130,246,0.5)]" />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className="block h-3 w-3 rounded-full border border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
+    <SliderPrimitive.Thumb className="block h-4 w-7 rounded-sm border border-zinc-600 bg-zinc-200 shadow-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
   </SliderPrimitive.Root>
 ))
 VerticalSlider.displayName = "VerticalSlider"
