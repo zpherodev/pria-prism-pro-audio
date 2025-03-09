@@ -38,12 +38,35 @@ const VerticalSlider = React.forwardRef<
     )}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-full w-[2px] grow overflow-hidden rounded-full bg-zinc-700 shadow-inner">
+    <SliderPrimitive.Track className="relative h-full w-[1px] grow overflow-hidden rounded-full bg-zinc-700 shadow-inner">
       <SliderPrimitive.Range className="absolute w-full bg-blue-400 shadow-[0_0_5px_rgba(59,130,246,0.5)]" />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className="block h-4 w-7 rounded-sm border border-zinc-600 bg-zinc-200 shadow-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
+    <SliderPrimitive.Thumb className="block h-3 w-6 rounded-sm border border-zinc-600 bg-zinc-200 shadow-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
   </SliderPrimitive.Root>
 ))
 VerticalSlider.displayName = "VerticalSlider"
 
-export { Slider, VerticalSlider }
+// Frequency response curve for parametric EQ
+const FrequencySlider = React.forwardRef<
+  React.ElementRef<typeof SliderPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> & {
+    color?: string;
+  }
+>(({ className, color = "#4f9ef8", ...props }, ref) => (
+  <SliderPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative flex w-full touch-none select-none items-center",
+      className
+    )}
+    {...props}
+  >
+    <SliderPrimitive.Track className="relative h-12 w-full grow overflow-hidden rounded-md bg-zinc-900 border border-zinc-800">
+      <SliderPrimitive.Range className="absolute h-full" style={{ background: `${color}20` }} />
+    </SliderPrimitive.Track>
+    <SliderPrimitive.Thumb className="block h-6 w-6 rounded-full border-2 border-blue-400 bg-zinc-300 ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-grab active:cursor-grabbing" style={{ borderColor: color }} />
+  </SliderPrimitive.Root>
+))
+FrequencySlider.displayName = "FrequencySlider"
+
+export { Slider, VerticalSlider, FrequencySlider }
