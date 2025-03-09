@@ -115,22 +115,29 @@ export const EffectsPanel = ({
               <Slider value={[gain]} onValueChange={values => setGain(values[0])} min={-12} max={12} step={0.1} />
             </div>
             
-            {/* Improved EQ bands layout */}
-            <div className="mt-4 flex justify-between items-end bg-zinc-800 px-2 py-2 rounded-md">
-              <div className="flex justify-between items-end w-full">
+            {/* Improved EQ bands layout with labels outside sliders */}
+            <div className="mt-4 flex flex-col bg-zinc-800 px-2 py-4 rounded-md">
+              <div className="flex justify-between items-end w-full h-48 mb-3">
                 {eqValues.map((band, index) => (
-                  <div key={index} className="flex flex-col items-center justify-center" style={{ width: '8%' }}>
-                    <div className="h-48 mb-2 flex items-center justify-center">
-                      <VerticalSlider 
-                        value={[band.value]} 
-                        onValueChange={values => handleEqChange(index, values[0])} 
-                        min={-12} 
-                        max={12} 
-                        step={0.1}
-                      />
-                    </div>
-                    <span className="text-[10px] text-gray-50 text-center w-full truncate">{band.freq}</span>
-                    <span className="text-[10px] text-gray-400">{band.value}dB</span>
+                  <div key={index} className="flex flex-col items-center justify-center" style={{ width: '9%' }}>
+                    <VerticalSlider 
+                      value={[band.value]} 
+                      onValueChange={values => handleEqChange(index, values[0])} 
+                      min={-12} 
+                      max={12} 
+                      step={0.1}
+                      className="h-full"
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              {/* Frequency labels below sliders */}
+              <div className="flex justify-between items-center w-full">
+                {eqValues.map((band, index) => (
+                  <div key={`label-${index}`} className="flex flex-col items-center justify-center" style={{ width: '9%' }}>
+                    <span className="text-[9px] text-gray-50 text-center w-full truncate">{band.freq}</span>
+                    <span className="text-[9px] text-gray-400">{band.value}dB</span>
                   </div>
                 ))}
               </div>
