@@ -110,8 +110,8 @@ export const EffectsPanel = ({
               <Slider value={[gain]} onValueChange={values => setGain(values[0])} min={-12} max={12} step={0.1} />
             </div>
             
-            <div className="mt-4 flex justify-between bg-zinc-800 align-left py-px mx-0 px-0 rounded-full">
-              {eqValues.map((band, index) => <div key={index} className="flex flex-col items-center border-r pr-1 ml-1 bg-zinc-800 py-0 rounded-3xl mx-0">
+            <div className="mt-4 flex justify-between bg-zinc-800 align-left py-px mx-0 px-0 rounded-md">
+              {eqValues.map((band, index) => <div key={index} className="flex flex-col items-center border-r pr-1 ml-1 bg-zinc-800 py-0 rounded-3xl text-center align-center mx-0">
                   <div className="h-48 flex items-center">
                     <Slider value={[band.value]} onValueChange={values => handleEqChange(index, values[0])} min={-12} max={12} step={0.1} orientation="vertical" />
                   </div>

@@ -6,13 +6,14 @@ import { AudioWaveform } from './AudioWaveform';
 import { SpectrumAnalysis } from './SpectrumAnalysis';
 import { PhaseAnalysis } from './PhaseAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
 interface PreviewProps {
   file: File | null;
   onAudioBufferLoaded?: (buffer: AudioBuffer) => void;
 }
-
-export const Preview = ({ file, onAudioBufferLoaded }: PreviewProps) => {
+export const Preview = ({
+  file,
+  onAudioBufferLoaded
+}: PreviewProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(75);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -27,7 +28,7 @@ export const Preview = ({ file, onAudioBufferLoaded }: PreviewProps) => {
     if (file && file.type.includes('audio')) {
       const url = URL.createObjectURL(file);
       setAudioUrl(url);
-      
+
       // Load audio buffer for timeline
       const loadAudioBuffer = async () => {
         try {
@@ -35,20 +36,17 @@ export const Preview = ({ file, onAudioBufferLoaded }: PreviewProps) => {
           const tempContext = new AudioContext();
           const buffer = await tempContext.decodeAudioData(arrayBuffer);
           setAudioBuffer(buffer);
-          
+
           // Notify parent about the loaded buffer
           if (onAudioBufferLoaded) {
             onAudioBufferLoaded(buffer);
           }
-          
           tempContext.close();
         } catch (error) {
           console.error("Error loading audio buffer:", error);
         }
       };
-      
       loadAudioBuffer();
-      
       return () => {
         URL.revokeObjectURL(url);
       };
@@ -59,7 +57,6 @@ export const Preview = ({ file, onAudioBufferLoaded }: PreviewProps) => {
   useEffect(() => {
     const context = new AudioContext();
     setAudioContext(context);
-
     return () => {
       if (context) {
         context.close();
@@ -84,19 +81,18 @@ export const Preview = ({ file, onAudioBufferLoaded }: PreviewProps) => {
     // Connect audio element to context when it's loaded
     const handleCanPlay = () => {
       console.log("Audio can play now, setting up audio graph");
-      
       if (audioContext.state === 'suspended') {
         audioContext.resume();
       }
-      
+
       // Create source from audio element
       const source = audioContext.createMediaElementSource(audioRef.current!);
       setAudioSource(source);
-      
+
       // Connect nodes: source -> analyser -> destination
       source.connect(newAnalyser);
       newAnalyser.connect(audioContext.destination);
-      
+
       // Set initial volume
       if (audioRef.current) {
         audioRef.current.volume = volume / 100;
@@ -109,40 +105,36 @@ export const Preview = ({ file, onAudioBufferLoaded }: PreviewProps) => {
       handleCanPlay();
     } else {
       // Wait for audio to load
-      audioRef.current.addEventListener('canplay', handleCanPlay, { once: true });
+      audioRef.current.addEventListener('canplay', handleCanPlay, {
+        once: true
+      });
     }
-
     return () => {
       if (audioRef.current) {
         audioRef.current.removeEventListener('canplay', handleCanPlay);
       }
     };
   }, [audioContext, file]);
-
   const togglePlayback = () => {
     if (!audioRef.current || !audioContext) return;
-    
+
     // Resume audio context (needed for autoplay policies)
     if (audioContext.state === 'suspended') {
       audioContext.resume().then(() => {
         console.log("AudioContext resumed");
       });
     }
-    
     if (isPlaying) {
       console.log("Pausing audio");
       audioRef.current.pause();
     } else {
       console.log("Playing audio");
-      audioRef.current.play()
-        .catch(error => {
-          console.error("Error playing audio:", error);
-        });
+      audioRef.current.play().catch(error => {
+        console.error("Error playing audio:", error);
+      });
     }
-    
     setIsPlaying(!isPlaying);
   };
-
   const handleVolumeChange = (value: number[]) => {
     setVolume(value[0]);
     if (audioRef.current) {
@@ -155,28 +147,15 @@ export const Preview = ({ file, onAudioBufferLoaded }: PreviewProps) => {
     console.log(`Timeline selection: ${startTime}s - ${endTime}s`);
     // You would implement actual editing functionality here
   };
-
-  return (
-    <div className="flex flex-col h-full">
+  return <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">Audio Analysis</h3>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Volume2 className="h-4 w-4 text-editor-text-secondary" />
-            <Slider 
-              className="w-24" 
-              value={[volume]} 
-              onValueChange={handleVolumeChange}
-              max={100}
-              step={1}
-            />
+          <div className="flex items-center gap-2 rounded-full bg-zinc-800 ml-8px px-0 mx-0 my-0 py-0">
+            <Volume2 className="h-8 w-8 text-editor-text-secondary rounded-full px-[3px] border bg-zinc-700" />
+            <Slider className="w-24" value={[volume]} onValueChange={handleVolumeChange} max={100} step={1} />
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={togglePlayback}
-            disabled={!file || !file.type.includes('audio')}
-          >
+          <Button variant="ghost" size="icon" onClick={togglePlayback} disabled={!file || !file.type.includes('audio')}>
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
         </div>
@@ -212,16 +191,7 @@ export const Preview = ({ file, onAudioBufferLoaded }: PreviewProps) => {
           </TabsContent>
         </Tabs>
 
-        {audioUrl && (
-          <audio
-            ref={audioRef}
-            className="hidden"
-            src={audioUrl}
-            onEnded={() => setIsPlaying(false)}
-            preload="auto"
-          />
-        )}
+        {audioUrl && <audio ref={audioRef} className="hidden" src={audioUrl} onEnded={() => setIsPlaying(false)} preload="auto" />}
       </div>
-    </div>
-  );
+    </div>;
 };
