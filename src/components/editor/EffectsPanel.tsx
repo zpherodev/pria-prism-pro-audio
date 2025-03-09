@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Sliders, AudioWaveform, Filter, Music4, BadgePlus, ChevronsUpDown, BadgePercent } from 'lucide-react';
-import { Slider } from "@/components/ui/slider";
+import { Slider, VerticalSlider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
 interface EffectsPanelProps {
   audioBuffer: AudioBuffer | null;
 }
@@ -40,6 +41,7 @@ const eqBands = [{
   freq: "20kHz",
   value: 0
 }];
+
 export const EffectsPanel = ({
   audioBuffer
 }: EffectsPanelProps) => {
@@ -75,10 +77,12 @@ export const EffectsPanel = ({
     };
     setEqValues(newValues);
   };
+
   const handleApplyEffect = (effectName: string) => {
     console.log(`Applying ${effectName} effect`);
     // In a real implementation, this would apply audio effects to the selected track
   };
+
   return <div className="h-full flex flex-col">
       <Tabs defaultValue="eq" className="w-full flex-grow">
         <TabsList className="mb-4 bg-zinc-800 rounded-full">
@@ -101,7 +105,7 @@ export const EffectsPanel = ({
         </TabsList>
         
         <ScrollArea className="h-[calc(100%-40px)]">
-          <TabsContent value="eq" className="spac pr-0">
+          <TabsContent value="eq" className="space-y-4 pr-4">
             <div className="space-y-2 border-b rounded-xl py-[9px]">
               <div className="flex justify-between">
                 <label className="text-sm">Master Gain</label>
@@ -110,14 +114,23 @@ export const EffectsPanel = ({
               <Slider value={[gain]} onValueChange={values => setGain(values[0])} min={-12} max={12} step={0.1} />
             </div>
             
-            <div className="mt-4 flex justify-between bg-zinc-800 align-left py-px mx-0 px-0 rounded-md">
-              {eqValues.map((band, index) => <div key={index} className="flex flex-col items-center border-r pr-1 ml-1 bg-zinc-800 py-0 rounded-3xl text-center align-center mx-0">
-                  <div className="h-48 flex items-center">
-                    <Slider value={[band.value]} onValueChange={values => handleEqChange(index, values[0])} min={-12} max={12} step={0.1} orientation="vertical" />
+            <div className="mt-4 flex justify-between items-end bg-zinc-800 px-1 py-2 rounded-md">
+              {eqValues.map((band, index) => (
+                <div key={index} className="flex flex-col items-center mx-0.5 w-8">
+                  <div className="h-48 mb-2 flex items-center justify-center">
+                    <VerticalSlider 
+                      value={[band.value]} 
+                      onValueChange={values => handleEqChange(index, values[0])} 
+                      min={-12} 
+                      max={12} 
+                      step={0.1} 
+                      className="mx-auto"
+                    />
                   </div>
-                  <span className="mt-1 text-xs text-gray-50 text-right my-0 px-0 mx-0 font-thin">{band.freq}</span>
+                  <span className="text-xs text-gray-50 text-center w-full truncate">{band.freq}</span>
                   <span className="text-xs text-gray-400">{band.value}dB</span>
-                </div>)}
+                </div>
+              ))}
             </div>
             
             <Button onClick={() => handleApplyEffect('equalizer')} disabled={!audioBuffer} className="w-full mt-4 bg-zinc-700 hover:bg-zinc-600 border rounded-full">
