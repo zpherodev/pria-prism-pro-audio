@@ -1,21 +1,28 @@
+
 import React, { useState } from 'react';
 import { MediaBin } from './editor/MediaBin';
 import { Timeline } from './editor/Timeline';
 import { Preview } from './editor/Preview';
 import { EffectsPanel } from './editor/EffectsPanel';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { PianoRoll } from './editor/PianoRoll';
+import { ChevronLeft, ChevronRight, Music } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 export const AudioEditor = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [activeTab, setActiveTab] = useState<'timeline' | 'pianoroll'>('timeline');
 
   // Handle selection from Timeline
   const handleTimelineChange = (startTime: number, endTime: number) => {
     console.log(`Selection from ${startTime}s to ${endTime}s`);
     // In a full implementation, this would trigger audio editing features
   };
+  
   const handleAudioBufferLoaded = (buffer: AudioBuffer) => {
     setAudioBuffer(buffer);
   };
@@ -32,6 +39,7 @@ export const AudioEditor = () => {
       return "grid-cols-[20fr_60fr_20fr]";
     }
   };
+  
   return <div className="flex flex-col gap-4">
       {/* Main Content Area */}
       <div className={`grid gap-4 ${getGridClasses()}`}>
@@ -60,9 +68,34 @@ export const AudioEditor = () => {
             <Preview file={selectedFile} onAudioBufferLoaded={handleAudioBufferLoaded} />
           </div>
           
-          {/* Multitrack Timeline */}
+          {/* Tabs for Timeline and Piano Roll */}
           <div className="panel">
-            <Timeline label="Multitrack Timeline" audioBuffer={audioBuffer} onTimelineChange={handleTimelineChange} multitrack={true} />
+            <Tabs defaultValue="timeline" value={activeTab} onValueChange={(value) => setActiveTab(value as 'timeline' | 'pianoroll')}>
+              <TabsList className="grid grid-cols-2 mb-4">
+                <TabsTrigger value="timeline">Multitrack Timeline</TabsTrigger>
+                <TabsTrigger value="pianoroll" className="flex items-center gap-1">
+                  <Music className="h-4 w-4" />
+                  Piano Roll
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="timeline">
+                <Timeline 
+                  label="Multitrack Timeline" 
+                  audioBuffer={audioBuffer} 
+                  onTimelineChange={handleTimelineChange} 
+                  multitrack={true} 
+                />
+              </TabsContent>
+              
+              <TabsContent value="pianoroll">
+                <PianoRoll 
+                  duration={audioBuffer?.duration || 30} 
+                  zoom={zoom}
+                  onZoomChange={setZoom}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
 
