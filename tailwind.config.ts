@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -23,6 +24,12 @@ export default {
           bg: "#222222",
           panel: "#2A2A2A",
           accent: "#3B82F6",
+          slider: {
+            track: "#1F2937",
+            thumb: "#E5E7EB",
+            range: "#3B82F6",
+            border: "#4B5563",
+          },
           text: {
             primary: "#FFFFFF",
             secondary: "#9CA3AF",
