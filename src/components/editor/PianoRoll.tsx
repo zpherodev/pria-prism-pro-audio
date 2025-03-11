@@ -1,8 +1,7 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Note, Trash2 } from 'lucide-react';
+import { Plus, Minus, Music, Trash2 } from 'lucide-react';
 
 interface Note {
   id: string;
@@ -30,7 +29,6 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   const [dragMode, setDragMode] = useState<'create' | 'move' | 'resize'>('create');
   const [activeTool, setActiveTool] = useState<'select' | 'draw' | 'erase'>('draw');
   
-  // Calculate dimensions
   const keyWidth = 60;
   const keyHeight = 20;
   const totalKeys = 88; // Piano standard
@@ -46,7 +44,6 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     if (onZoomChange) onZoomChange(newZoom);
   };
 
-  // Render piano keys and grid
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -54,18 +51,14 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas dimensions
     canvas.width = Math.max(duration * zoom * 100, 1000);
     canvas.height = totalKeys * keyHeight;
 
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw the grid - vertical lines for time divisions
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(keyWidth, 0, canvas.width - keyWidth, canvas.height);
     
-    // Draw time markers
     ctx.fillStyle = '#333';
     const pixelsPerSecond = zoom * 100;
     const secondsVisible = canvas.width / pixelsPerSecond;
@@ -87,24 +80,20 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       }
     }
 
-    // Draw piano keys
     for (let i = 0; i < totalKeys; i++) {
       const midiNote = lowestKey + i;
       const isBlackKey = [1, 3, 6, 8, 10].includes(midiNote % 12);
       const y = canvas.height - (i + 1) * keyHeight;
       
-      // Draw white key background
       ctx.fillStyle = isBlackKey ? '#222' : '#eee';
       ctx.fillRect(0, y, keyWidth, keyHeight);
       
-      // Draw key borders
       ctx.strokeStyle = '#666';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.rect(0, y, keyWidth, keyHeight);
       ctx.stroke();
 
-      // Draw horizontal grid lines
       ctx.strokeStyle = '#2a2a2a';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -112,7 +101,6 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       ctx.lineTo(canvas.width, y);
       ctx.stroke();
       
-      // Label C keys (C1, C2, etc.)
       if (midiNote % 12 === 0) {
         const octave = Math.floor(midiNote / 12) - 1;
         ctx.fillStyle = '#999';
@@ -121,32 +109,26 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       }
     }
 
-    // Draw notes
     notes.forEach(note => {
       const x = keyWidth + note.startTime * pixelsPerSecond;
       const y = canvas.height - (note.key - lowestKey + 1) * keyHeight;
       const width = note.duration * pixelsPerSecond;
       
-      // Note body
       ctx.fillStyle = 'rgba(59, 130, 246, 0.7)';
       ctx.fillRect(x, y, width, keyHeight);
       
-      // Note border
       ctx.strokeStyle = '#3b82f6';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.rect(x, y, width, keyHeight);
       ctx.stroke();
       
-      // Velocity indicator
       const velocityWidth = 2 + (note.velocity / 127) * 3;
       ctx.fillStyle = '#60a5fa';
       ctx.fillRect(x, y, velocityWidth, keyHeight);
     });
-
   }, [zoom, duration, notes]);
 
-  // Handle mouse interactions
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -156,21 +138,18 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     const y = e.clientY - rect.top;
     
     if (x <= keyWidth) {
-      // Clicked on piano keys - play the note
       const keyIndex = Math.floor((canvas.height - y) / keyHeight);
       const midiNote = lowestKey + keyIndex;
       console.log(`Play note: ${midiNote}`);
       return;
     }
     
-    // Convert coordinates to musical parameters
     const pixelsPerSecond = zoom * 100;
     const time = (x - keyWidth) / pixelsPerSecond;
     const keyIndex = Math.floor((canvas.height - y) / keyHeight);
     const midiNote = lowestKey + keyIndex;
     
     if (activeTool === 'draw') {
-      // Start creating a new note
       const newNote: Note = {
         id: Date.now().toString(),
         key: midiNote,
@@ -183,7 +162,6 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       setDragMode('resize');
       setIsDragging(true);
     } else if (activeTool === 'select') {
-      // Check if we clicked on an existing note
       for (const note of notes) {
         const noteX = keyWidth + note.startTime * pixelsPerSecond;
         const noteY = canvas.height - (note.key - lowestKey + 1) * keyHeight;
@@ -193,10 +171,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
           x >= noteX && x <= noteX + noteWidth &&
           y >= noteY && y <= noteY + keyHeight
         ) {
-          // Clicked on a note - start moving or resizing
           setCurrentNote(note);
           
-          // If near the edge, we're resizing
           if (x > noteX + noteWidth - 10) {
             setDragMode('resize');
           } else {
@@ -208,7 +184,6 @@ const PianoRoll: React.FC<PianoRollProps> = ({
         }
       }
     } else if (activeTool === 'erase') {
-      // Remove note if clicked on it
       setNotes(prevNotes => prevNotes.filter(note => {
         const noteX = keyWidth + note.startTime * pixelsPerSecond;
         const noteY = canvas.height - (note.key - lowestKey + 1) * keyHeight;
@@ -231,7 +206,6 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     const pixelsPerSecond = zoom * 100;
     
     if (dragMode === 'create' || dragMode === 'resize') {
-      // Updating note duration
       const time = (x - keyWidth) / pixelsPerSecond;
       const newDuration = Math.max(0.1, time - currentNote.startTime);
       
@@ -240,9 +214,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
         return { ...prev, duration: newDuration };
       });
     } else if (dragMode === 'move') {
-      // Moving the note
       const time = (x - keyWidth) / pixelsPerSecond;
-      // Calculate time difference from the note's start
       const deltaTime = time - currentNote.startTime;
       
       setCurrentNote(prev => {
@@ -255,10 +227,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   const handleMouseUp = () => {
     if (isDragging && currentNote) {
       if (dragMode === 'create') {
-        // Add the new note
         setNotes(prev => [...prev, currentNote]);
       } else if (dragMode === 'move' || dragMode === 'resize') {
-        // Update the existing note
         setNotes(prev => 
           prev.map(note => 
             note.id === currentNote.id ? currentNote : note
@@ -302,7 +272,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
               onClick={() => setActiveTool('draw')} 
               className={activeTool === 'draw' ? 'bg-blue-800/20' : ''}
             >
-              <Note className="h-4 w-4" />
+              <Music className="h-4 w-4" />
             </Button>
             <Button 
               variant="ghost" 
