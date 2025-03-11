@@ -41,6 +41,7 @@ export default {
       },
       boxShadow: {
         "panel": "0 3px 6px rgba(0,0,0,0.25)",
+        "slider": "0 1px 2px rgba(0,0,0,0.3)",
       },
     },
   },

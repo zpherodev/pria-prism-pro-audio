@@ -17,10 +17,10 @@ const Slider = React.forwardRef<
     )}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-1 w-full grow overflow-hidden rounded-full bg-zinc-800 border border-zinc-700">
-      <SliderPrimitive.Range className="absolute h-full bg-blue-500" />
+    <SliderPrimitive.Track className="relative h-1 w-full grow overflow-hidden rounded-full bg-editor-slider-track border border-editor-slider-border">
+      <SliderPrimitive.Range className="absolute h-full bg-editor-slider-range" />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className="block h-3.5 w-3.5 rounded-sm border border-zinc-600 bg-zinc-200 shadow-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
+    <SliderPrimitive.Thumb className="block h-3.5 w-3.5 rounded-sm border border-zinc-600 bg-editor-slider-thumb shadow-slider ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
   </SliderPrimitive.Root>
 ))
 Slider.displayName = SliderPrimitive.Root.displayName
@@ -39,10 +39,10 @@ const VerticalSlider = React.forwardRef<
     )}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-full w-[1px] grow overflow-hidden rounded-full bg-zinc-800 border border-zinc-700">
-      <SliderPrimitive.Range className="absolute w-full bg-blue-500" />
+    <SliderPrimitive.Track className="relative h-full w-[1px] grow overflow-hidden rounded-full bg-editor-slider-track border border-editor-slider-border">
+      <SliderPrimitive.Range className="absolute w-full bg-editor-slider-range" />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className="block h-3 w-5 rounded-sm border border-zinc-600 bg-zinc-200 shadow-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
+    <SliderPrimitive.Thumb className="block h-3 w-5 rounded-sm border border-zinc-600 bg-editor-slider-thumb shadow-slider ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
   </SliderPrimitive.Root>
 ))
 VerticalSlider.displayName = "VerticalSlider"
@@ -65,7 +65,7 @@ const FrequencySlider = React.forwardRef<
     <SliderPrimitive.Track className="relative h-12 w-full grow overflow-hidden rounded-md bg-zinc-900 border border-zinc-800">
       <SliderPrimitive.Range className="absolute h-full" style={{ background: `${color}20` }} />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className="block h-6 w-6 rounded-full border-2 border-blue-400 bg-zinc-300 ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-grab active:cursor-grabbing" style={{ borderColor: color }} />
+    <SliderPrimitive.Thumb className="block h-6 w-6 rounded-full border-2 bg-editor-slider-thumb ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-grab active:cursor-grabbing" style={{ borderColor: color }} />
   </SliderPrimitive.Root>
 ))
 FrequencySlider.displayName = "FrequencySlider"
@@ -83,10 +83,10 @@ const CompactSlider = React.forwardRef<
     )}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-1 w-full grow overflow-hidden rounded-full bg-zinc-800 border border-zinc-700">
-      <SliderPrimitive.Range className="absolute h-full bg-blue-500" />
+    <SliderPrimitive.Track className="relative h-1 w-full grow overflow-hidden rounded-full bg-editor-slider-track border border-editor-slider-border">
+      <SliderPrimitive.Range className="absolute h-full bg-editor-slider-range" />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className="block h-2.5 w-2.5 rounded-sm border border-zinc-600 bg-zinc-200 shadow-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
+    <SliderPrimitive.Thumb className="block h-2.5 w-2.5 rounded-sm border border-zinc-600 bg-editor-slider-thumb shadow-slider ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
   </SliderPrimitive.Root>
 ))
 CompactSlider.displayName = "CompactSlider"
