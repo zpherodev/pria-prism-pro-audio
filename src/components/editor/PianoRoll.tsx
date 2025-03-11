@@ -1,7 +1,9 @@
-import React, { useRef, useEffect, useState } from 'react';
+
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Music, Trash2 } from 'lucide-react';
+import { Plus, Minus, Music, Trash2, Play, Pause, SkipBack } from 'lucide-react';
+import { NoteScheduler } from '@/utils/audioSynthesis';
 
 interface Note {
   id: string;
@@ -28,6 +30,11 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const [dragMode, setDragMode] = useState<'create' | 'move' | 'resize'>('create');
   const [activeTool, setActiveTool] = useState<'select' | 'draw' | 'erase'>('draw');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentPosition, setCurrentPosition] = useState(0);
+  const [noteScheduler] = useState(() => new NoteScheduler());
+  const [lastFrameTime, setLastFrameTime] = useState(0);
+  const animationFrameRef = useRef<number | null>(null);
   
   const keyWidth = 60;
   const keyHeight = 20;
@@ -43,6 +50,67 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     const newZoom = Math.max(zoom / 1.5, 0.1);
     if (onZoomChange) onZoomChange(newZoom);
   };
+
+  const togglePlayback = useCallback(() => {
+    if (isPlaying) {
+      noteScheduler.stopPlayback();
+      setIsPlaying(false);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    } else {
+      noteScheduler.startPlayback(currentPosition);
+      setIsPlaying(true);
+      // Start animation frame for playhead
+      if (!animationFrameRef.current) {
+        const animate = () => {
+          setCurrentPosition(noteScheduler.currentTime);
+          animationFrameRef.current = requestAnimationFrame(animate);
+        };
+        animationFrameRef.current = requestAnimationFrame(animate);
+      }
+    }
+  }, [isPlaying, currentPosition, noteScheduler]);
+
+  const resetPlayback = useCallback(() => {
+    if (isPlaying) {
+      togglePlayback();
+    }
+    setCurrentPosition(0);
+    noteScheduler.setPosition(0);
+  }, [isPlaying, togglePlayback, noteScheduler]);
+
+  // Play notes on click (piano keyboard)
+  const playNotePreview = useCallback((midiNote: number) => {
+    const noteId = `preview-${midiNote}`;
+    noteScheduler.playNote(noteId, midiNote);
+    // Stop note after 500ms
+    setTimeout(() => noteScheduler.stopNote(noteId), 500);
+  }, [noteScheduler]);
+
+  // Update playhead and schedule notes
+  useEffect(() => {
+    if (isPlaying) {
+      const now = Date.now();
+      if (lastFrameTime && now - lastFrameTime > 100) {
+        // Schedule notes in 1-second window ahead
+        const lookAheadTime = currentPosition + 1;
+        noteScheduler.scheduleNotes(notes, currentPosition, lookAheadTime);
+      }
+      setLastFrameTime(now);
+    }
+  }, [isPlaying, currentPosition, notes, noteScheduler, lastFrameTime]);
+
+  // Clean up animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      noteScheduler.stopPlayback();
+    };
+  }, [noteScheduler]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -109,6 +177,15 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       }
     }
 
+    // Draw playhead
+    const playheadX = keyWidth + currentPosition * pixelsPerSecond;
+    ctx.strokeStyle = '#EF4444';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(playheadX, 0);
+    ctx.lineTo(playheadX, canvas.height);
+    ctx.stroke();
+
     notes.forEach(note => {
       const x = keyWidth + note.startTime * pixelsPerSecond;
       const y = canvas.height - (note.key - lowestKey + 1) * keyHeight;
@@ -127,7 +204,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       ctx.fillStyle = '#60a5fa';
       ctx.fillRect(x, y, velocityWidth, keyHeight);
     });
-  }, [zoom, duration, notes]);
+  }, [zoom, duration, notes, currentPosition]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -140,7 +217,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     if (x <= keyWidth) {
       const keyIndex = Math.floor((canvas.height - y) / keyHeight);
       const midiNote = lowestKey + keyIndex;
-      console.log(`Play note: ${midiNote}`);
+      playNotePreview(midiNote);
       return;
     }
     
@@ -282,6 +359,27 @@ const PianoRoll: React.FC<PianoRollProps> = ({
               className={activeTool === 'erase' ? 'bg-blue-800/20' : ''}
             >
               <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <div className="flex bg-editor-panel rounded-md overflow-hidden">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              title="Reset" 
+              onClick={resetPlayback} 
+              className="bg-zinc-700 hover:bg-zinc-600"
+            >
+              <SkipBack className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              title={isPlaying ? "Pause" : "Play"}
+              onClick={togglePlayback} 
+              className="bg-zinc-600 hover:bg-zinc-500"
+            >
+              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
           </div>
           
