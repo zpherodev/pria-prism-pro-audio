@@ -1,9 +1,9 @@
-
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, Pencil, Trash2, Play, Pause, SkipBack, Eraser, Music4 } from 'lucide-react';
 import { NoteScheduler } from '@/utils/audioSynthesis';
+import { saveNotesToLocalStorage, loadNotesFromLocalStorage } from '@/utils/persistenceUtils';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +50,19 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   const keyHeight = 20;
   const totalKeys = 88; // Piano standard
   const lowestKey = 21; // A0 in MIDI
+  
+  // Load notes from local storage on initial render
+  useEffect(() => {
+    const savedNotes = loadNotesFromLocalStorage();
+    if (savedNotes.length > 0) {
+      setNotes(savedNotes);
+    }
+  }, []);
+  
+  // Save notes to local storage whenever they change
+  useEffect(() => {
+    saveNotesToLocalStorage(notes);
+  }, [notes]);
   
   const handleZoomIn = () => {
     const newZoom = Math.min(zoom * 1.5, 10);
@@ -421,6 +434,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
 
   const clearAllNotes = () => {
     setNotes([]);
+    // Also clear from local storage
+    saveNotesToLocalStorage([]);
   };
 
   return (
