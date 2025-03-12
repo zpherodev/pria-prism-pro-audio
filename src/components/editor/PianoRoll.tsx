@@ -1,9 +1,16 @@
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Pencil, Trash2, Play, Pause, SkipBack, Eraser, Music4 } from 'lucide-react';
+import { Plus, Minus, Pencil, Trash2, Play, Pause, SkipBack, Eraser, Music4, Repeat, Scissors } from 'lucide-react';
 import { NoteScheduler } from '@/utils/audioSynthesis';
-import { saveNotesToLocalStorage, loadNotesFromLocalStorage } from '@/utils/persistenceUtils';
+import { 
+  saveNotesToLocalStorage, 
+  loadNotesFromLocalStorage, 
+  saveLoopSettingsToLocalStorage,
+  loadLoopSettingsFromLocalStorage,
+  LoopSettings
+} from '@/utils/persistenceUtils';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -37,14 +44,20 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   const [notes, setNotes] = useState<Note[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
-  const [dragMode, setDragMode] = useState<'create' | 'move' | 'resize'>('create');
-  const [activeTool, setActiveTool] = useState<'select' | 'pencil' | 'erase'>('pencil');
+  const [dragMode, setDragMode] = useState<'create' | 'move' | 'resize' | 'loopStart' | 'loopEnd' | 'loopRegion'>('create');
+  const [activeTool, setActiveTool] = useState<'select' | 'pencil' | 'erase' | 'loop'>('pencil');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentPosition, setCurrentPosition] = useState(0);
   const [noteScheduler] = useState(() => new NoteScheduler());
   const [lastFrameTime, setLastFrameTime] = useState(0);
   const [snapValue, setSnapValue] = useState<SnapValue>('1/8');
   const animationFrameRef = useRef<number | null>(null);
+  const [loopSettings, setLoopSettings] = useState<LoopSettings>({
+    enabled: false,
+    startTime: 0,
+    endTime: 4
+  });
+  const [dragStartX, setDragStartX] = useState<number | null>(null);
   
   const keyWidth = 60;
   const keyHeight = 20;
@@ -57,12 +70,23 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     if (savedNotes.length > 0) {
       setNotes(savedNotes);
     }
+    
+    // Load loop settings
+    const savedLoopSettings = loadLoopSettingsFromLocalStorage();
+    if (savedLoopSettings) {
+      setLoopSettings(savedLoopSettings);
+    }
   }, []);
   
   // Save notes to local storage whenever they change
   useEffect(() => {
     saveNotesToLocalStorage(notes);
   }, [notes]);
+  
+  // Save loop settings whenever they change
+  useEffect(() => {
+    saveLoopSettingsToLocalStorage(loopSettings);
+  }, [loopSettings]);
   
   const handleZoomIn = () => {
     const newZoom = Math.min(zoom * 1.5, 10);
@@ -88,13 +112,22 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       // Start animation frame for playhead
       if (!animationFrameRef.current) {
         const animate = () => {
-          setCurrentPosition(noteScheduler.currentTime);
+          const newPosition = noteScheduler.currentTime;
+          
+          // Handle looping if enabled
+          if (loopSettings.enabled && newPosition >= loopSettings.endTime) {
+            noteScheduler.setPosition(loopSettings.startTime);
+            setCurrentPosition(loopSettings.startTime);
+          } else {
+            setCurrentPosition(newPosition);
+          }
+          
           animationFrameRef.current = requestAnimationFrame(animate);
         };
         animationFrameRef.current = requestAnimationFrame(animate);
       }
     }
-  }, [isPlaying, currentPosition, noteScheduler]);
+  }, [isPlaying, currentPosition, noteScheduler, loopSettings]);
 
   const resetPlayback = useCallback(() => {
     if (isPlaying) {
@@ -153,6 +186,11 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     const snapInSeconds = getSnapValueInSeconds();
     return Math.round(time / snapInSeconds) * snapInSeconds;
   }, [getSnapValueInSeconds]);
+
+  // Toggle loop mode
+  const toggleLoopMode = useCallback(() => {
+    setLoopSettings(prev => ({ ...prev, enabled: !prev.enabled }));
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -240,6 +278,47 @@ const PianoRoll: React.FC<PianoRollProps> = ({
         ctx.fillText(`C${octave}`, 5, y + 12);
       }
     }
+    
+    // Draw loop region if enabled
+    if (loopSettings.enabled || activeTool === 'loop') {
+      const loopStartX = keyWidth + loopSettings.startTime * pixelsPerSecond;
+      const loopEndX = keyWidth + loopSettings.endTime * pixelsPerSecond;
+      
+      // Draw semi-transparent region
+      ctx.fillStyle = 'rgba(100, 100, 255, 0.15)';
+      ctx.fillRect(loopStartX, 0, loopEndX - loopStartX, canvas.height);
+      
+      // Draw loop region borders
+      ctx.strokeStyle = '#6464ff';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      
+      // Start marker
+      ctx.beginPath();
+      ctx.moveTo(loopStartX, 0);
+      ctx.lineTo(loopStartX, canvas.height);
+      ctx.stroke();
+      
+      // End marker
+      ctx.beginPath();
+      ctx.moveTo(loopEndX, 0);
+      ctx.lineTo(loopEndX, canvas.height);
+      ctx.stroke();
+      
+      // Reset line dash
+      ctx.setLineDash([]);
+      
+      // Draw handles
+      const handleSize = 10;
+      const handleY = 10;
+      
+      // Start handle
+      ctx.fillStyle = '#6464ff';
+      ctx.fillRect(loopStartX - handleSize/2, handleY - handleSize/2, handleSize, handleSize);
+      
+      // End handle
+      ctx.fillRect(loopEndX - handleSize/2, handleY - handleSize/2, handleSize, handleSize);
+    }
 
     // Draw playhead
     const playheadX = keyWidth + currentPosition * pixelsPerSecond;
@@ -265,6 +344,29 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       ctx.rect(x, y, width, keyHeight);
       ctx.stroke();
     }
+    
+    // Draw loop selection region if currently dragging in loop mode
+    if (isDragging && activeTool === 'loop' && dragMode === 'loopRegion' && dragStartX !== null) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const currentX = (dragStartX - keyWidth) / pixelsPerSecond;
+      
+      const startX = keyWidth + Math.min(currentX, loopSettings.startTime) * pixelsPerSecond;
+      const endX = keyWidth + Math.max(currentX, loopSettings.endTime) * pixelsPerSecond;
+      
+      ctx.fillStyle = 'rgba(100, 100, 255, 0.25)';
+      ctx.fillRect(startX, 0, endX - startX, canvas.height);
+      
+      ctx.strokeStyle = '#6464ff';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.rect(startX, 0, endX - startX, canvas.height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
     // Draw all notes
     notes.forEach(note => {
@@ -285,7 +387,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       ctx.fillStyle = '#60a5fa';
       ctx.fillRect(x, y, velocityWidth, keyHeight);
     });
-  }, [zoom, duration, notes, currentPosition, isDragging, currentNote, getSnapValueInSeconds, snapTimeToGrid]);
+  }, [zoom, duration, notes, currentPosition, isDragging, currentNote, 
+      getSnapValueInSeconds, snapTimeToGrid, loopSettings, activeTool, dragStartX, dragMode]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -308,6 +411,50 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     const snappedTime = snapTimeToGrid(time);
     const keyIndex = Math.floor((canvas.height - y) / keyHeight);
     const midiNote = lowestKey + keyIndex;
+    
+    // Check if clicking on loop handles (if loop mode is active)
+    if (loopSettings.enabled || activeTool === 'loop') {
+      const loopStartX = keyWidth + loopSettings.startTime * pixelsPerSecond;
+      const loopEndX = keyWidth + loopSettings.endTime * pixelsPerSecond;
+      const handleSize = 10;
+      const handleY = 10;
+      
+      // Check start handle
+      if (
+        Math.abs(x - loopStartX) <= handleSize &&
+        Math.abs(y - handleY) <= handleSize
+      ) {
+        setIsDragging(true);
+        setDragMode('loopStart');
+        return;
+      }
+      
+      // Check end handle
+      if (
+        Math.abs(x - loopEndX) <= handleSize &&
+        Math.abs(y - handleY) <= handleSize
+      ) {
+        setIsDragging(true);
+        setDragMode('loopEnd');
+        return;
+      }
+    }
+    
+    if (activeTool === 'loop') {
+      // Start creating a loop region
+      setIsDragging(true);
+      setDragMode('loopRegion');
+      setDragStartX(x);
+      
+      // Initialize loop with current position
+      setLoopSettings(prev => ({
+        ...prev,
+        startTime: snappedTime,
+        endTime: snappedTime + getSnapValueInSeconds() * 4
+      }));
+      
+      return;
+    }
     
     if (activeTool === 'pencil') {
       // Create a new note
@@ -374,14 +521,68 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging || !currentNote || !canvasRef.current) return;
+    if (!isDragging || !canvasRef.current) return;
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     const pixelsPerSecond = zoom * 100;
     
-    if (dragMode === 'resize') {
+    if (activeTool === 'loop') {
+      if (dragMode === 'loopStart') {
+        // Adjust loop start marker
+        const time = (x - keyWidth) / pixelsPerSecond;
+        const snappedTime = snapTimeToGrid(time);
+        
+        // Ensure start time doesn't go beyond end time
+        if (snappedTime < loopSettings.endTime) {
+          setLoopSettings(prev => ({
+            ...prev,
+            startTime: Math.max(0, snappedTime)
+          }));
+        }
+      } else if (dragMode === 'loopEnd') {
+        // Adjust loop end marker
+        const time = (x - keyWidth) / pixelsPerSecond;
+        const snappedTime = snapTimeToGrid(time);
+        
+        // Ensure end time doesn't go below start time
+        if (snappedTime > loopSettings.startTime) {
+          setLoopSettings(prev => ({
+            ...prev,
+            endTime: snappedTime
+          }));
+        }
+      } else if (dragMode === 'loopRegion') {
+        // Creating loop region by dragging
+        const time = (x - keyWidth) / pixelsPerSecond;
+        const snappedTime = snapTimeToGrid(time);
+        
+        if (dragStartX !== null) {
+          const dragStartTime = ((dragStartX - keyWidth) / pixelsPerSecond);
+          
+          if (snappedTime >= dragStartTime) {
+            // Dragging right - update end position
+            setLoopSettings(prev => ({
+              ...prev,
+              startTime: Math.min(dragStartTime, prev.startTime),
+              endTime: Math.max(snappedTime, dragStartTime)
+            }));
+          } else {
+            // Dragging left - update start position
+            setLoopSettings(prev => ({
+              ...prev,
+              startTime: Math.min(snappedTime, dragStartTime),
+              endTime: Math.max(dragStartTime, prev.endTime)
+            }));
+          }
+        }
+      }
+      return;
+    }
+    
+    if (dragMode === 'resize' && currentNote) {
       // Get the current end position
       const time = (x - keyWidth) / pixelsPerSecond;
       const snappedTime = snapTimeToGrid(time);
@@ -391,7 +592,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
         if (!prev) return null;
         return { ...prev, duration: newDuration };
       });
-    } else if (dragMode === 'move') {
+    } else if (dragMode === 'move' && currentNote) {
       // Move the entire note
       const time = (x - keyWidth) / pixelsPerSecond;
       const snappedTime = snapTimeToGrid(time);
@@ -404,7 +605,13 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   };
 
   const handleMouseUp = () => {
-    if (isDragging && currentNote) {
+    if (activeTool === 'loop' && dragMode === 'loopRegion') {
+      // Enable looping when dragging completes
+      setLoopSettings(prev => ({
+        ...prev,
+        enabled: true
+      }));
+    } else if (isDragging && currentNote) {
       // Add the note back to the array with updated properties
       setNotes(prev => {
         if (dragMode === 'resize' || dragMode === 'move') {
@@ -430,6 +637,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     
     setIsDragging(false);
     setCurrentNote(null);
+    setDragStartX(null);
   };
 
   const clearAllNotes = () => {
@@ -475,6 +683,15 @@ const PianoRoll: React.FC<PianoRollProps> = ({
               className={activeTool === 'erase' ? 'bg-blue-800/20' : ''}
             >
               <Eraser className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              title="Loop Tool" 
+              onClick={() => setActiveTool('loop')} 
+              className={activeTool === 'loop' ? 'bg-blue-800/20' : ''}
+            >
+              <Scissors className="h-4 w-4" />
             </Button>
           </div>
           
@@ -547,6 +764,15 @@ const PianoRoll: React.FC<PianoRollProps> = ({
               className="bg-zinc-600 hover:bg-zinc-500"
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              title={loopSettings.enabled ? "Disable Loop" : "Enable Loop"}
+              onClick={toggleLoopMode} 
+              className={`bg-zinc-600 hover:bg-zinc-500 ${loopSettings.enabled ? 'text-blue-400' : ''}`}
+            >
+              <Repeat className="h-4 w-4" />
             </Button>
           </div>
           
