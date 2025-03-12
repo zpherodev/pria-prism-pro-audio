@@ -363,6 +363,33 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     
+    // Handle right-click to erase notes
+    if (e.button === 2) {
+      e.preventDefault(); // Prevent context menu
+      
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      if (x <= keyWidth) return; // Ignore right clicks on piano keys
+      
+      const pixelsPerSecond = zoom * 100;
+      
+      // Find and remove the note under the cursor
+      setNotes(prevNotes => prevNotes.filter(note => {
+        const noteX = keyWidth + note.startTime * pixelsPerSecond;
+        const noteY = canvas.height - (note.key - lowestKey + 1) * keyHeight;
+        const noteWidth = note.duration * pixelsPerSecond;
+        
+        return !(
+          x >= noteX && x <= noteX + noteWidth &&
+          y >= noteY && y <= noteY + keyHeight
+        );
+      }));
+      
+      return;
+    }
+    
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -586,6 +613,29 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     setNotes([]);
     saveNotesToLocalStorage([]);
   };
+  
+  // Add keyboard event handler for spacebar to toggle play/pause
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Spacebar to toggle play/pause
+      if (e.code === 'Space' && !e.repeat && !e.target) {
+        e.preventDefault();
+        togglePlayback();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [togglePlayback]);
+  
+  // Add context menu prevention
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    return false;
+  };
 
   return (
     <div className="piano-roll-container flex flex-col gap-2">
@@ -742,27 +792,4 @@ const PianoRoll: React.FC<PianoRollProps> = ({
             variant="destructive" 
             size="sm" 
             onClick={clearAllNotes} 
-            className="bg-red-900/30 hover:bg-red-900/50 text-red-500 h-8 text-xs"
-          >
-            <Trash2 className="h-4 w-4 mr-1" /> Clear All
-          </Button>
-        </div>
-      </div>
-      
-      <ScrollArea className="border border-zinc-700 rounded-md bg-zinc-900">
-        <div className="w-full h-[400px] overflow-auto">
-          <canvas 
-            ref={canvasRef} 
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            className="min-w-full"
-          />
-        </div>
-      </ScrollArea>
-    </div>
-  );
-};
-
-export { PianoRoll };
+            className="bg-red-900/30 hover:bg
