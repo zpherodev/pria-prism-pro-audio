@@ -2,8 +2,15 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Music, Trash2, Play, Pause, SkipBack } from 'lucide-react';
+import { Plus, Minus, Pencil, Trash2, Play, Pause, SkipBack, Eraser, Music4 } from 'lucide-react';
 import { NoteScheduler } from '@/utils/audioSynthesis';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 
 interface Note {
   id: string;
@@ -19,6 +26,8 @@ interface PianoRollProps {
   onZoomChange?: (zoom: number) => void;
 }
 
+type SnapValue = '1/32' | '1/16' | '1/8' | '1/4' | '1/2' | '1';
+
 const PianoRoll: React.FC<PianoRollProps> = ({ 
   duration, 
   zoom,
@@ -29,11 +38,12 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const [dragMode, setDragMode] = useState<'create' | 'move' | 'resize'>('create');
-  const [activeTool, setActiveTool] = useState<'select' | 'draw' | 'erase'>('draw');
+  const [activeTool, setActiveTool] = useState<'select' | 'pencil' | 'erase'>('pencil');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentPosition, setCurrentPosition] = useState(0);
   const [noteScheduler] = useState(() => new NoteScheduler());
   const [lastFrameTime, setLastFrameTime] = useState(0);
+  const [snapValue, setSnapValue] = useState<SnapValue>('1/8');
   const animationFrameRef = useRef<number | null>(null);
   
   const keyWidth = 60;
@@ -112,6 +122,25 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     };
   }, [noteScheduler]);
 
+  // Get snap value in seconds
+  const getSnapValueInSeconds = useCallback(() => {
+    switch (snapValue) {
+      case '1/32': return 0.125;
+      case '1/16': return 0.25;
+      case '1/8': return 0.5;
+      case '1/4': return 1;
+      case '1/2': return 2;
+      case '1': return 4;
+      default: return 0.5;
+    }
+  }, [snapValue]);
+
+  // Snap time to grid
+  const snapTimeToGrid = useCallback((time: number): number => {
+    const snapInSeconds = getSnapValueInSeconds();
+    return Math.round(time / snapInSeconds) * snapInSeconds;
+  }, [getSnapValueInSeconds]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -130,24 +159,46 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     ctx.fillStyle = '#333';
     const pixelsPerSecond = zoom * 100;
     const secondsVisible = canvas.width / pixelsPerSecond;
-    const timeStep = zoom > 1 ? 0.25 : zoom > 0.5 ? 0.5 : 1;
     
-    for (let time = 0; time <= secondsVisible; time += timeStep) {
+    // Draw time grid
+    const snapInSeconds = getSnapValueInSeconds();
+    const smallestGridDivision = snapInSeconds / 4; // Draw finer grid lines
+    
+    for (let time = 0; time <= secondsVisible; time += smallestGridDivision) {
       const x = keyWidth + time * pixelsPerSecond;
-      ctx.strokeStyle = time % 1 === 0 ? '#555' : '#333';
-      ctx.lineWidth = time % 1 === 0 ? 1 : 0.5;
+      
+      // Determine line style based on grid position
+      const isMeasure = time % 4 < 0.001; // Assuming 4/4 time signature
+      const isBeat = time % 1 < 0.001;
+      const isSnapLine = time % snapInSeconds < 0.001;
+      
+      if (isMeasure) {
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+      } else if (isBeat) {
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 1;
+      } else if (isSnapLine) {
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 0.5;
+      } else {
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 0.5;
+      }
+      
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, canvas.height);
       ctx.stroke();
       
-      if (time % 1 === 0) {
+      if (isBeat) {
         ctx.fillStyle = '#888';
         ctx.font = '10px sans-serif';
-        ctx.fillText(`${time}s`, x + 2, 10);
+        ctx.fillText(`${time.toFixed(1)}s`, x + 2, 10);
       }
     }
 
+    // Draw piano keys and horizontal grid lines
     for (let i = 0; i < totalKeys; i++) {
       const midiNote = lowestKey + i;
       const isBlackKey = [1, 3, 6, 8, 10].includes(midiNote % 12);
@@ -162,7 +213,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       ctx.rect(0, y, keyWidth, keyHeight);
       ctx.stroke();
 
-      ctx.strokeStyle = '#2a2a2a';
+      ctx.strokeStyle = isBlackKey ? '#1a1a1a' : '#2a2a2a';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(keyWidth, y);
@@ -186,6 +237,23 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     ctx.lineTo(playheadX, canvas.height);
     ctx.stroke();
 
+    // Draw current note being created/resized/moved
+    if (isDragging && currentNote) {
+      const x = keyWidth + currentNote.startTime * pixelsPerSecond;
+      const y = canvas.height - (currentNote.key - lowestKey + 1) * keyHeight;
+      const width = currentNote.duration * pixelsPerSecond;
+      
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.5)'; // Red for current note
+      ctx.fillRect(x, y, width, keyHeight);
+      
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.rect(x, y, width, keyHeight);
+      ctx.stroke();
+    }
+
+    // Draw all notes
     notes.forEach(note => {
       const x = keyWidth + note.startTime * pixelsPerSecond;
       const y = canvas.height - (note.key - lowestKey + 1) * keyHeight;
@@ -204,7 +272,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       ctx.fillStyle = '#60a5fa';
       ctx.fillRect(x, y, velocityWidth, keyHeight);
     });
-  }, [zoom, duration, notes, currentPosition]);
+  }, [zoom, duration, notes, currentPosition, isDragging, currentNote, getSnapValueInSeconds, snapTimeToGrid]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -215,6 +283,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     const y = e.clientY - rect.top;
     
     if (x <= keyWidth) {
+      // Clicked on piano keys - play the note
       const keyIndex = Math.floor((canvas.height - y) / keyHeight);
       const midiNote = lowestKey + keyIndex;
       playNotePreview(midiNote);
@@ -223,22 +292,31 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     
     const pixelsPerSecond = zoom * 100;
     const time = (x - keyWidth) / pixelsPerSecond;
+    const snappedTime = snapTimeToGrid(time);
     const keyIndex = Math.floor((canvas.height - y) / keyHeight);
     const midiNote = lowestKey + keyIndex;
     
-    if (activeTool === 'draw') {
+    if (activeTool === 'pencil') {
+      // Create a new note
       const newNote: Note = {
         id: Date.now().toString(),
         key: midiNote,
-        startTime: time,
-        duration: 0.5,
+        startTime: snappedTime,
+        duration: getSnapValueInSeconds(),
         velocity: 100
       };
       
       setCurrentNote(newNote);
       setDragMode('resize');
       setIsDragging(true);
+      
+      // Play the note as feedback
+      playNotePreview(midiNote);
+      
+      // Immediately add the note to the array so it's visible
+      setNotes(prev => [...prev, newNote]);
     } else if (activeTool === 'select') {
+      // Check if we clicked on an existing note
       for (const note of notes) {
         const noteX = keyWidth + note.startTime * pixelsPerSecond;
         const noteY = canvas.height - (note.key - lowestKey + 1) * keyHeight;
@@ -250,6 +328,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
         ) {
           setCurrentNote(note);
           
+          // If near the right edge, set resize mode, otherwise move mode
           if (x > noteX + noteWidth - 10) {
             setDragMode('resize');
           } else {
@@ -257,10 +336,17 @@ const PianoRoll: React.FC<PianoRollProps> = ({
           }
           
           setIsDragging(true);
+          
+          // Remove the current note from the array while dragging
+          setNotes(prev => prev.filter(n => n.id !== note.id));
+          
+          // Play the note as feedback
+          playNotePreview(note.key);
           break;
         }
       }
     } else if (activeTool === 'erase') {
+      // Erase notes at current position
       setNotes(prevNotes => prevNotes.filter(note => {
         const noteX = keyWidth + note.startTime * pixelsPerSecond;
         const noteY = canvas.height - (note.key - lowestKey + 1) * keyHeight;
@@ -282,36 +368,51 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     const x = e.clientX - rect.left;
     const pixelsPerSecond = zoom * 100;
     
-    if (dragMode === 'create' || dragMode === 'resize') {
+    if (dragMode === 'resize') {
+      // Get the current end position
       const time = (x - keyWidth) / pixelsPerSecond;
-      const newDuration = Math.max(0.1, time - currentNote.startTime);
+      const snappedTime = snapTimeToGrid(time);
+      const newDuration = Math.max(getSnapValueInSeconds() / 2, snappedTime - currentNote.startTime);
       
       setCurrentNote(prev => {
         if (!prev) return null;
         return { ...prev, duration: newDuration };
       });
     } else if (dragMode === 'move') {
+      // Move the entire note
       const time = (x - keyWidth) / pixelsPerSecond;
-      const deltaTime = time - currentNote.startTime;
+      const snappedTime = snapTimeToGrid(time);
       
       setCurrentNote(prev => {
         if (!prev) return null;
-        return { ...prev, startTime: Math.max(0, prev.startTime + deltaTime) };
+        return { ...prev, startTime: Math.max(0, snappedTime) };
       });
     }
   };
 
   const handleMouseUp = () => {
     if (isDragging && currentNote) {
-      if (dragMode === 'create') {
-        setNotes(prev => [...prev, currentNote]);
-      } else if (dragMode === 'move' || dragMode === 'resize') {
-        setNotes(prev => 
-          prev.map(note => 
-            note.id === currentNote.id ? currentNote : note
-          )
-        );
-      }
+      // Add the note back to the array with updated properties
+      setNotes(prev => {
+        if (dragMode === 'resize' || dragMode === 'move') {
+          // Check if this note overlaps with any existing ones
+          const overlapIndex = prev.findIndex(note => 
+            note.key === currentNote.key && 
+            note.id !== currentNote.id &&
+            ((currentNote.startTime >= note.startTime && currentNote.startTime < note.startTime + note.duration) ||
+             (currentNote.startTime + currentNote.duration > note.startTime && currentNote.startTime + currentNote.duration <= note.startTime + note.duration) ||
+             (currentNote.startTime <= note.startTime && currentNote.startTime + currentNote.duration >= note.startTime + note.duration))
+          );
+          
+          if (overlapIndex >= 0) {
+            // There's an overlap, so don't add the note
+            return prev;
+          }
+          
+          return [...prev, currentNote];
+        }
+        return prev;
+      });
     }
     
     setIsDragging(false);
@@ -345,11 +446,11 @@ const PianoRoll: React.FC<PianoRollProps> = ({
             <Button 
               variant="ghost" 
               size="icon" 
-              title="Draw Tool" 
-              onClick={() => setActiveTool('draw')} 
-              className={activeTool === 'draw' ? 'bg-blue-800/20' : ''}
+              title="Pencil Tool" 
+              onClick={() => setActiveTool('pencil')} 
+              className={activeTool === 'pencil' ? 'bg-blue-800/20' : ''}
             >
-              <Music className="h-4 w-4" />
+              <Pencil className="h-4 w-4" />
             </Button>
             <Button 
               variant="ghost" 
@@ -358,9 +459,60 @@ const PianoRoll: React.FC<PianoRollProps> = ({
               onClick={() => setActiveTool('erase')} 
               className={activeTool === 'erase' ? 'bg-blue-800/20' : ''}
             >
-              <Trash2 className="h-4 w-4" />
+              <Eraser className="h-4 w-4" />
             </Button>
           </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="bg-zinc-700 hover:bg-zinc-600 flex items-center gap-1 text-xs"
+              >
+                <Music4 className="h-3 w-3 mr-1" />
+                Snap: {snapValue}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem 
+                onClick={() => setSnapValue('1/32')}
+                className={snapValue === '1/32' ? 'bg-blue-900/20' : ''}
+              >
+                1/32 Note
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setSnapValue('1/16')}
+                className={snapValue === '1/16' ? 'bg-blue-900/20' : ''}
+              >
+                1/16 Note
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setSnapValue('1/8')}
+                className={snapValue === '1/8' ? 'bg-blue-900/20' : ''}
+              >
+                1/8 Note
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setSnapValue('1/4')}
+                className={snapValue === '1/4' ? 'bg-blue-900/20' : ''}
+              >
+                1/4 Note
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setSnapValue('1/2')}
+                className={snapValue === '1/2' ? 'bg-blue-900/20' : ''}
+              >
+                1/2 Note
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setSnapValue('1')}
+                className={snapValue === '1' ? 'bg-blue-900/20' : ''}
+              >
+                Whole Note
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           
           <div className="flex bg-editor-panel rounded-md overflow-hidden">
             <Button 
@@ -410,7 +562,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
             onClick={clearAllNotes} 
             className="bg-red-900/30 hover:bg-red-900/50 text-red-500 h-8 text-xs"
           >
-            Clear Notes
+            <Trash2 className="h-4 w-4 mr-1" /> Clear All
           </Button>
         </div>
       </div>
