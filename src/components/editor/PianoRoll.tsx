@@ -792,4 +792,28 @@ const PianoRoll: React.FC<PianoRollProps> = ({
             variant="destructive" 
             size="sm" 
             onClick={clearAllNotes} 
-            className="bg-red-900/30 hover:bg
+            className="bg-red-900/30 hover:bg-red-900/50 text-red-500 h-8 text-xs"
+          >
+            <Trash2 className="h-4 w-4 mr-1" /> Clear All
+          </Button>
+        </div>
+      </div>
+      
+      <ScrollArea className="border border-zinc-700 rounded-md bg-zinc-900">
+        <div className="w-full h-[400px] overflow-auto">
+          <canvas 
+            ref={canvasRef} 
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onContextMenu={handleContextMenu}
+            className="min-w-full"
+          />
+        </div>
+      </ScrollArea>
+    </div>
+  );
+};
+
+export { PianoRoll };
