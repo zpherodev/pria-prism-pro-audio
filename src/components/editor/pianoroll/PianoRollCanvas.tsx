@@ -121,7 +121,7 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseLeave}
       onContextMenu={onContextMenu}
-      className="min-w-full"
+      className="min-w-100 max-w-900"
       data-row-index={rowIndex} // Add data attribute to identify the row
     />
   );
