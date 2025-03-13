@@ -4,9 +4,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { PianoRollToolbar } from './pianoroll/PianoRollToolbar';
 import { PianoRollCanvas } from './pianoroll/PianoRollCanvas';
 import { usePianoRollState } from '@/hooks/usePianoRollState';
-import { Note, PianoRollLayoutType } from '@/types/pianoRoll';
+import { Note, PianoRollLayoutType, SheetMusicSettings } from '@/types/pianoRoll';
 import { Button } from "@/components/ui/button";
-import { FileText, Grid } from 'lucide-react';
+import { Grid, Rows3 } from 'lucide-react';
 
 interface PianoRollProps {
   duration: number;
@@ -20,6 +20,11 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   onZoomChange 
 }) => {
   const [layoutType, setLayoutType] = useState<PianoRollLayoutType>('sheet-music');
+  const [sheetMusicSettings, setSheetMusicSettings] = useState<SheetMusicSettings>({
+    beatsPerMeasure: 4,
+    measuresPerRow: 8, // Show 8 measures per row like in the reference image
+    totalRows: 4      // 4 rows like in the reference image
+  });
   
   const {
     notes,
@@ -352,8 +357,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
           className="flex items-center gap-1"
         >
           {layoutType === 'traditional' 
-            ? <><Grid className="h-4 w-4" /> Traditional</> 
-            : <><FileText className="h-4 w-4" /> Sheet Music</>}
+            ? <><Rows3 className="h-4 w-4" /> Sheet Music</> 
+            : <><Grid className="h-4 w-4" /> Traditional</>}
         </Button>
       </div>
       
@@ -371,6 +376,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
             dragStartX={dragStartX}
             zoom={zoom}
             layoutType={layoutType}
+            sheetMusicSettings={sheetMusicSettings}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}

@@ -1,4 +1,3 @@
-
 import { Note, SnapValue } from '@/types/pianoRoll';
 import { LoopSettings } from '@/utils/persistenceUtils';
 
@@ -35,7 +34,7 @@ export const renderSheetPianoRoll = (
   const keyHeight = 20;
   const totalKeys = 88; // Piano standard
   const lowestKey = 21; // A0 in MIDI
-  const keysPerRow = 28; // Show 28 keys per row (more than 2 octaves)
+  const keysPerRow = 24; // Show 2 octaves per row like in the reference image
   
   const { beatsPerMeasure, measuresPerRow, totalRows, pixelsPerBeat } = gridSettings;
   
@@ -48,16 +47,31 @@ export const renderSheetPianoRoll = (
   canvas.height = rowHeight * totalRows;
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
+
   // ------------------- Render grid for each row -------------------
   for (let row = 0; row < totalRows; row++) {
     // Background
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(keyWidth, row * rowHeight, rowWidth, rowHeight);
     
+    // Draw time markers at the top of each row
+    ctx.fillStyle = '#333';
+    ctx.fillRect(keyWidth, row * rowHeight, rowWidth, 20);
+    
+    for (let i = 0; i <= measuresPerRow; i++) {
+      const x = keyWidth + i * measureWidth;
+      const second = i * beatsPerMeasure / 2; // Assuming 120 BPM
+      
+      ctx.fillStyle = '#999';
+      ctx.font = '10px Arial';
+      if (i < measuresPerRow) {
+        ctx.fillText(`${second.toFixed(1)}s`, x + 5, row * rowHeight + 15);
+      }
+    }
+    
     // Draw horizontal grid lines (for each key)
     for (let i = 0; i <= keysPerRow; i++) {
-      const y = row * rowHeight + i * keyHeight;
+      const y = row * rowHeight + i * keyHeight + 20; // +20 for time markers
       
       ctx.strokeStyle = '#333';
       ctx.lineWidth = 0.5;
@@ -90,22 +104,14 @@ export const renderSheetPianoRoll = (
         ctx.lineTo(beatX, (row + 1) * rowHeight);
         ctx.stroke();
       }
-      
-      // Draw measure numbers
-      if (measure < measuresPerRow) {
-        const measureNumber = row * measuresPerRow + measure + 1;
-        ctx.fillStyle = '#888';
-        ctx.font = '10px sans-serif';
-        ctx.fillText(`M${measureNumber}`, measureX + 5, row * rowHeight + 15);
-      }
     }
     
     // Draw piano keys for this row
     for (let i = 0; i < keysPerRow; i++) {
-      const keyIndex = i + (totalKeys - keysPerRow - row * keysPerRow);
-      const midiNote = lowestKey + keyIndex;
+      const keyIndex = keysPerRow - i - 1; // Reverse to match piano layout
+      const midiNote = (row * keysPerRow) + keyIndex + lowestKey;
       const isBlackKey = [1, 3, 6, 8, 10].includes(midiNote % 12);
-      const y = row * rowHeight + i * keyHeight;
+      const y = row * rowHeight + i * keyHeight + 20; // +20 for time markers
       
       ctx.fillStyle = isBlackKey ? '#222' : '#eee';
       ctx.fillRect(0, y, keyWidth, keyHeight);
@@ -237,13 +243,17 @@ export const renderSheetPianoRoll = (
     const noteStartRowPosition = note.startTime % secondsPerRow;
     const noteEndRowPosition = (note.startTime + note.duration) % secondsPerRow;
     
-    // Calculate key index within each row
-    const keyIndex = (note.key - lowestKey) % totalKeys;
-    const rowIndex = totalKeys - keysPerRow - Math.floor(keyIndex / keysPerRow) * keysPerRow;
-    const keyIndexInRow = keyIndex % keysPerRow;
+    // Calculate which key in the row this note belongs to
+    const midiNoteOffset = note.key - lowestKey;
+    const rowOffset = Math.floor(midiNoteOffset / keysPerRow);
+    const keyOffsetInRow = midiNoteOffset % keysPerRow;
     
     // Draw note for each row it spans
     for (let row = noteStartRow; row <= noteEndRow; row++) {
+      // Skip if this note doesn't belong to this row
+      const noteRowOffset = rowOffset - row;
+      if (noteRowOffset < 0 || noteRowOffset >= totalRows) continue;
+      
       let startX, width;
       
       if (row === noteStartRow && row === noteEndRow) {
@@ -264,7 +274,8 @@ export const renderSheetPianoRoll = (
         width = rowWidth;
       }
       
-      const y = row * rowHeight + keyIndexInRow * keyHeight;
+      // Position in row - inverting to match piano layout (higher notes at top)
+      const y = row * rowHeight + (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20; // +20 for time markers
       
       ctx.fillStyle = 'rgba(59, 130, 246, 0.7)';
       ctx.fillRect(startX, y, width, keyHeight);
@@ -275,6 +286,7 @@ export const renderSheetPianoRoll = (
       ctx.rect(startX, y, width, keyHeight);
       ctx.stroke();
       
+      // Draw velocity bar
       const velocityWidth = 2 + (note.velocity / 127) * 3;
       ctx.fillStyle = '#60a5fa';
       ctx.fillRect(startX, y, velocityWidth, keyHeight);
@@ -289,10 +301,15 @@ export const renderSheetPianoRoll = (
     const noteStartRowPosition = currentNote.startTime % secondsPerRow;
     const noteEndRowPosition = (currentNote.startTime + currentNote.duration) % secondsPerRow;
     
-    const keyIndex = (currentNote.key - lowestKey) % totalKeys;
-    const keyIndexInRow = keyIndex % keysPerRow;
+    const midiNoteOffset = currentNote.key - lowestKey;
+    const rowOffset = Math.floor(midiNoteOffset / keysPerRow);
+    const keyOffsetInRow = midiNoteOffset % keysPerRow;
     
     for (let row = noteStartRow; row <= noteEndRow; row++) {
+      // Skip if this note doesn't belong to this row
+      const noteRowOffset = rowOffset - row;
+      if (noteRowOffset < 0 || noteRowOffset >= totalRows) continue;
+      
       let startX, width;
       
       if (row === noteStartRow && row === noteEndRow) {
@@ -309,7 +326,7 @@ export const renderSheetPianoRoll = (
         width = rowWidth;
       }
       
-      const y = row * rowHeight + keyIndexInRow * keyHeight;
+      const y = row * rowHeight + (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20; // +20 for time markers
       
       ctx.fillStyle = 'rgba(239, 68, 68, 0.5)';
       ctx.fillRect(startX, y, width, keyHeight);

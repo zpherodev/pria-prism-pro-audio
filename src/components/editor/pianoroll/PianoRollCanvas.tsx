@@ -1,9 +1,9 @@
 
 import React, { useRef, useEffect } from 'react';
-import { Note, SnapValue, ToolType, DragMode, PianoRollLayoutType } from '@/types/pianoRoll';
+import { Note, SnapValue, ToolType, DragMode, PianoRollLayoutType, SheetMusicSettings } from '@/types/pianoRoll';
 import { LoopSettings } from '@/utils/persistenceUtils';
 import { renderPianoRoll } from '@/utils/pianoRollUtils';
-import { renderSheetPianoRoll, defaultSheetMusicSettings } from '@/utils/sheetPianoRollUtils';
+import { renderSheetPianoRoll } from '@/utils/sheetPianoRollUtils';
 
 interface PianoRollCanvasProps {
   notes: Note[];
@@ -17,6 +17,7 @@ interface PianoRollCanvasProps {
   dragStartX: number | null;
   zoom: number;
   layoutType: PianoRollLayoutType;
+  sheetMusicSettings: SheetMusicSettings;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: () => void;
@@ -36,6 +37,7 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
   dragStartX,
   zoom,
   layoutType,
+  sheetMusicSettings,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -84,7 +86,9 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
         dragMode,
         snapValue,
         {
-          ...defaultSheetMusicSettings,
+          beatsPerMeasure: sheetMusicSettings.beatsPerMeasure,
+          measuresPerRow: sheetMusicSettings.measuresPerRow,
+          totalRows: sheetMusicSettings.totalRows,
           pixelsPerBeat: 50 * zoom
         }
       );
@@ -100,7 +104,8 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
     dragStartX, 
     dragMode,
     snapValue,
-    layoutType
+    layoutType,
+    sheetMusicSettings
   ]);
 
   return (
