@@ -23,7 +23,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   const [sheetMusicSettings, setSheetMusicSettings] = useState<SheetMusicSettings>({
     beatsPerMeasure: 4,
     measuresPerRow: 8, // Show 8 measures per row like in the reference image
-    totalRows: 4      // 4 rows like in the reference image
+    totalRows: 1      // 4 rows like in the reference image
   });
   
   const {
@@ -363,7 +363,79 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       </div>
       
       <ScrollArea className="border border-zinc-700 rounded-md bg-zinc-900">
-        <div className={`w-full ${layoutType === 'sheet-music' ? 'h-[600px]' : 'h-[400px]'} overflow-auto`}>
+        <div className={`w-full ${layoutType === 'sheet-music' ? 'h-[200px]' : 'h-[200px]'} overflow-auto`}>
+          <PianoRollCanvas
+            notes={notes}
+            isDragging={isDragging}
+            currentNote={currentNote}
+            dragMode={dragMode}
+            activeTool={activeTool}
+            currentPosition={currentPosition}
+            snapValue={snapValue}
+            loopSettings={loopSettings}
+            dragStartX={dragStartX}
+            zoom={zoom}
+            layoutType={layoutType}
+            sheetMusicSettings={sheetMusicSettings}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onContextMenu={handleContextMenu}
+          />
+        </div>
+      </ScrollArea>
+
+      <ScrollArea className="border border-zinc-700 rounded-md bg-zinc-900">
+        <div className={`w-full ${layoutType === 'sheet-music' ? 'h-[200px]' : 'h-[200px]'} overflow-auto`}>
+          <PianoRollCanvas
+            notes={notes}
+            isDragging={isDragging}
+            currentNote={currentNote}
+            dragMode={dragMode}
+            activeTool={activeTool}
+            currentPosition={currentPosition}
+            snapValue={snapValue}
+            loopSettings={loopSettings}
+            dragStartX={dragStartX}
+            zoom={zoom}
+            layoutType={layoutType}
+            sheetMusicSettings={sheetMusicSettings}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onContextMenu={handleContextMenu}
+          />
+        </div>
+      </ScrollArea>
+
+      <ScrollArea className="border border-zinc-700 rounded-md bg-zinc-900">
+        <div className={`w-full ${layoutType === 'sheet-music' ? 'h-[200px]' : 'h-[200px]'} overflow-auto`}>
+          <PianoRollCanvas
+            notes={notes}
+            isDragging={isDragging}
+            currentNote={currentNote}
+            dragMode={dragMode}
+            activeTool={activeTool}
+            currentPosition={currentPosition}
+            snapValue={snapValue}
+            loopSettings={loopSettings}
+            dragStartX={dragStartX}
+            zoom={zoom}
+            layoutType={layoutType}
+            sheetMusicSettings={sheetMusicSettings}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onContextMenu={handleContextMenu}
+          />
+        </div>
+      </ScrollArea>
+
+      <ScrollArea className="border border-zinc-700 rounded-md bg-zinc-900">
+        <div className={`w-full ${layoutType === 'sheet-music' ? 'h-[200px]' : 'h-[200px]'} overflow-auto`}>
           <PianoRollCanvas
             notes={notes}
             isDragging={isDragging}
