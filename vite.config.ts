@@ -13,9 +13,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === 'development' &&
-    componentTagger({
-      customAttributes: true,
-    }),
+    componentTagger(),
   ].filter(Boolean),
   resolve: {
     alias: {
