@@ -24,4 +24,5 @@ export interface SheetMusicSettings {
   beatsPerMeasure: number;
   measuresPerRow: number;
   totalRows: number;
+  rowSpacing?: number; // Added row spacing option
 }

@@ -71,7 +71,7 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
         snapValue
       );
     } else {
-      // Sheet music style layout
+      // Sheet music style layout with improved spacing
       renderSheetPianoRoll(
         ctx,
         canvas,
@@ -89,7 +89,8 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
           beatsPerMeasure: sheetMusicSettings.beatsPerMeasure,
           measuresPerRow: sheetMusicSettings.measuresPerRow,
           totalRows: sheetMusicSettings.totalRows,
-          pixelsPerBeat: 50 * zoom
+          pixelsPerBeat: 50 * zoom,
+          rowSpacing: 30 // Add spacing between rows
         }
       );
     }

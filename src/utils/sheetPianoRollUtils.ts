@@ -1,3 +1,4 @@
+
 import { Note, SnapValue } from '@/types/pianoRoll';
 import { LoopSettings } from '@/utils/persistenceUtils';
 
@@ -6,6 +7,7 @@ export interface SheetMusicGridSettings {
   measuresPerRow: number;
   totalRows: number;
   pixelsPerBeat: number;
+  rowSpacing?: number; // Optional spacing between rows
 }
 
 export const defaultSheetMusicSettings = {
@@ -36,42 +38,109 @@ export const renderSheetPianoRoll = (
   const lowestKey = 21; // A0 in MIDI
   const keysPerRow = 24; // Show 2 octaves per row like in the reference image
   
-  const { beatsPerMeasure, measuresPerRow, totalRows, pixelsPerBeat } = gridSettings;
+  const { beatsPerMeasure, measuresPerRow, totalRows, pixelsPerBeat, rowSpacing = 30 } = gridSettings;
   
   // Set canvas width and height based on grid settings
   const measureWidth = beatsPerMeasure * pixelsPerBeat * zoom;
   const rowWidth = measureWidth * measuresPerRow;
   const rowHeight = keyHeight * keysPerRow;
   
+  // Add spacing between rows
+  const totalRowHeight = rowHeight + rowSpacing;
+  
   canvas.width = rowWidth + keyWidth;
-  canvas.height = rowHeight * totalRows;
+  canvas.height = totalRowHeight * totalRows - rowSpacing; // Subtract final spacing
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // ------------------- Render grid for each row -------------------
   for (let row = 0; row < totalRows; row++) {
-    // Background
+    const rowY = row * totalRowHeight;
+    
+    // Draw a titled banner for each staff (similar to real sheet music)
+    if (row === 0) {
+      // Title section at the top
+      ctx.fillStyle = '#f8f8f8';
+      ctx.fillRect(0, 0, canvas.width, 50);
+      
+      // Draw separator line
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, 50);
+      ctx.lineTo(canvas.width, 50);
+      ctx.stroke();
+      
+      // Draw title
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 20px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Piano Roll Score', canvas.width / 2, 30);
+      
+      // Reset for normal drawing
+      ctx.textAlign = 'left';
+    }
+    
+    // Add spacing between rows with a subtle background
+    if (row > 0) {
+      ctx.fillStyle = '#f8f8f8';
+      ctx.fillRect(0, rowY - rowSpacing, canvas.width, rowSpacing);
+      
+      // Add a thin line to separate rows
+      ctx.strokeStyle = '#ddd';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, rowY);
+      ctx.lineTo(canvas.width, rowY);
+      ctx.stroke();
+    }
+    
+    // Background for main note area
     ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(keyWidth, row * rowHeight, rowWidth, rowHeight);
+    ctx.fillRect(keyWidth, rowY, rowWidth, rowHeight);
+    
+    // Add row number indicator
+    ctx.fillStyle = '#555';
+    ctx.font = '12px serif';
+    ctx.fillText(`Row ${row + 1}`, 5, rowY + 15);
     
     // Draw time markers at the top of each row
     ctx.fillStyle = '#333';
-    ctx.fillRect(keyWidth, row * rowHeight, rowWidth, 20);
+    ctx.fillRect(keyWidth, rowY, rowWidth, 20);
     
     for (let i = 0; i <= measuresPerRow; i++) {
       const x = keyWidth + i * measureWidth;
       const second = i * beatsPerMeasure / 2; // Assuming 120 BPM
       
-      ctx.fillStyle = '#999';
+      ctx.fillStyle = '#ddd';
       ctx.font = '10px Arial';
       if (i < measuresPerRow) {
-        ctx.fillText(`${second.toFixed(1)}s`, x + 5, row * rowHeight + 15);
+        ctx.fillText(`${second.toFixed(1)}s`, x + 5, rowY + 15);
+        
+        // Add measure numbers
+        ctx.fillStyle = '#aaa';
+        ctx.font = '12px serif';
+        const measureNumber = row * measuresPerRow + i + 1;
+        ctx.fillText(`${measureNumber}`, x + measureWidth/2 - 5, rowY + 15);
       }
+    }
+    
+    // Draw staff lines (5 lines like in real sheet music)
+    const staffLineSpacing = rowHeight / 10;
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 0.5;
+    
+    for (let line = 0; line < 5; line++) {
+      const y = rowY + 20 + staffLineSpacing + line * staffLineSpacing * 2;
+      ctx.beginPath();
+      ctx.moveTo(keyWidth, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
     }
     
     // Draw horizontal grid lines (for each key)
     for (let i = 0; i <= keysPerRow; i++) {
-      const y = row * rowHeight + i * keyHeight + 20; // +20 for time markers
+      const y = rowY + i * keyHeight + 20; // +20 for time markers
       
       ctx.strokeStyle = '#333';
       ctx.lineWidth = 0.5;
@@ -87,10 +156,10 @@ export const renderSheetPianoRoll = (
       
       // Draw measure line
       ctx.strokeStyle = '#666';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = measure === 0 ? 2 : 1; // Thicker line at start
       ctx.beginPath();
-      ctx.moveTo(measureX, row * rowHeight);
-      ctx.lineTo(measureX, (row + 1) * rowHeight);
+      ctx.moveTo(measureX, rowY);
+      ctx.lineTo(measureX, rowY + rowHeight);
       ctx.stroke();
       
       // Draw beat lines within each measure
@@ -100,8 +169,8 @@ export const renderSheetPianoRoll = (
         ctx.strokeStyle = '#444';
         ctx.lineWidth = 0.5;
         ctx.beginPath();
-        ctx.moveTo(beatX, row * rowHeight);
-        ctx.lineTo(beatX, (row + 1) * rowHeight);
+        ctx.moveTo(beatX, rowY);
+        ctx.lineTo(beatX, rowY + rowHeight);
         ctx.stroke();
       }
     }
@@ -111,7 +180,7 @@ export const renderSheetPianoRoll = (
       const keyIndex = keysPerRow - i - 1; // Reverse to match piano layout
       const midiNote = (row * keysPerRow) + keyIndex + lowestKey;
       const isBlackKey = [1, 3, 6, 8, 10].includes(midiNote % 12);
-      const y = row * rowHeight + i * keyHeight + 20; // +20 for time markers
+      const y = rowY + i * keyHeight + 20; // +20 for time markers
       
       ctx.fillStyle = isBlackKey ? '#222' : '#eee';
       ctx.fillRect(0, y, keyWidth, keyHeight);
@@ -144,9 +213,18 @@ export const renderSheetPianoRoll = (
   ctx.strokeStyle = '#EF4444';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(rowPositionPixels, currentRow * rowHeight);
-  ctx.lineTo(rowPositionPixels, (currentRow + 1) * rowHeight);
+  ctx.moveTo(rowPositionPixels, currentRow * totalRowHeight);
+  ctx.lineTo(rowPositionPixels, currentRow * totalRowHeight + rowHeight);
   ctx.stroke();
+  
+  // Add a playhead position indicator (like a small triangle at the top)
+  ctx.fillStyle = '#EF4444';
+  ctx.beginPath();
+  ctx.moveTo(rowPositionPixels - 5, currentRow * totalRowHeight);
+  ctx.lineTo(rowPositionPixels + 5, currentRow * totalRowHeight);
+  ctx.lineTo(rowPositionPixels, currentRow * totalRowHeight + 5);
+  ctx.closePath();
+  ctx.fill();
   
   // ------------------- Draw loop region if enabled -------------------
   if (loopSettings.enabled || activeTool === 'loop') {
@@ -167,7 +245,7 @@ export const renderSheetPianoRoll = (
       ctx.fillStyle = 'rgba(100, 100, 255, 0.15)';
       ctx.fillRect(
         loopStartX, 
-        loopStartRow * rowHeight, 
+        loopStartRow * totalRowHeight, 
         loopEndX - loopStartX, 
         rowHeight
       );
@@ -177,14 +255,14 @@ export const renderSheetPianoRoll = (
       
       // Start line
       ctx.beginPath();
-      ctx.moveTo(loopStartX, loopStartRow * rowHeight);
-      ctx.lineTo(loopStartX, (loopStartRow + 1) * rowHeight);
+      ctx.moveTo(loopStartX, loopStartRow * totalRowHeight);
+      ctx.lineTo(loopStartX, loopStartRow * totalRowHeight + rowHeight);
       ctx.stroke();
       
       // End line
       ctx.beginPath();
-      ctx.moveTo(loopEndX, loopStartRow * rowHeight);
-      ctx.lineTo(loopEndX, (loopStartRow + 1) * rowHeight);
+      ctx.moveTo(loopEndX, loopStartRow * totalRowHeight);
+      ctx.lineTo(loopEndX, loopStartRow * totalRowHeight + rowHeight);
       ctx.stroke();
     } else {
       // Loop spans multiple rows
@@ -192,7 +270,7 @@ export const renderSheetPianoRoll = (
       ctx.fillStyle = 'rgba(100, 100, 255, 0.15)';
       ctx.fillRect(
         loopStartX, 
-        loopStartRow * rowHeight, 
+        loopStartRow * totalRowHeight, 
         rowWidth + keyWidth - loopStartX, 
         rowHeight
       );
@@ -201,7 +279,7 @@ export const renderSheetPianoRoll = (
       for (let row = loopStartRow + 1; row < loopEndRow; row++) {
         ctx.fillRect(
           keyWidth, 
-          row * rowHeight, 
+          row * totalRowHeight, 
           rowWidth, 
           rowHeight
         );
@@ -210,7 +288,7 @@ export const renderSheetPianoRoll = (
       // Last row (partial)
       ctx.fillRect(
         keyWidth, 
-        loopEndRow * rowHeight, 
+        loopEndRow * totalRowHeight, 
         loopEndX - keyWidth, 
         rowHeight
       );
@@ -219,14 +297,14 @@ export const renderSheetPianoRoll = (
       ctx.strokeStyle = '#6464ff';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(loopStartX, loopStartRow * rowHeight);
-      ctx.lineTo(loopStartX, (loopStartRow + 1) * rowHeight);
+      ctx.moveTo(loopStartX, loopStartRow * totalRowHeight);
+      ctx.lineTo(loopStartX, loopStartRow * totalRowHeight + rowHeight);
       ctx.stroke();
       
       // Draw end line
       ctx.beginPath();
-      ctx.moveTo(loopEndX, loopEndRow * rowHeight);
-      ctx.lineTo(loopEndX, (loopEndRow + 1) * rowHeight);
+      ctx.moveTo(loopEndX, loopEndRow * totalRowHeight);
+      ctx.lineTo(loopEndX, loopEndRow * totalRowHeight + rowHeight);
       ctx.stroke();
     }
     
@@ -275,21 +353,35 @@ export const renderSheetPianoRoll = (
       }
       
       // Position in row - inverting to match piano layout (higher notes at top)
-      const y = row * rowHeight + (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20; // +20 for time markers
+      const y = row * totalRowHeight + (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20; // +20 for time markers
+      
+      // Give notes an oval shape like in real sheet music
+      const noteHeight = keyHeight - 2;
+      const radius = noteHeight / 2;
       
       ctx.fillStyle = 'rgba(59, 130, 246, 0.7)';
-      ctx.fillRect(startX, y, width, keyHeight);
+      
+      // Draw rounded note
+      ctx.beginPath();
+      ctx.moveTo(startX + radius, y);
+      ctx.lineTo(startX + width - radius, y);
+      ctx.quadraticCurveTo(startX + width, y, startX + width, y + radius);
+      ctx.lineTo(startX + width, y + noteHeight - radius);
+      ctx.quadraticCurveTo(startX + width, y + noteHeight, startX + width - radius, y + noteHeight);
+      ctx.lineTo(startX + radius, y + noteHeight);
+      ctx.quadraticCurveTo(startX, y + noteHeight, startX, y + noteHeight - radius);
+      ctx.lineTo(startX, y + radius);
+      ctx.quadraticCurveTo(startX, y, startX + radius, y);
+      ctx.fill();
       
       ctx.strokeStyle = '#3b82f6';
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.rect(startX, y, width, keyHeight);
       ctx.stroke();
       
       // Draw velocity bar
       const velocityWidth = 2 + (note.velocity / 127) * 3;
       ctx.fillStyle = '#60a5fa';
-      ctx.fillRect(startX, y, velocityWidth, keyHeight);
+      ctx.fillRect(startX, y, velocityWidth, noteHeight);
     }
   });
   
@@ -326,15 +418,27 @@ export const renderSheetPianoRoll = (
         width = rowWidth;
       }
       
-      const y = row * rowHeight + (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20; // +20 for time markers
+      const y = row * totalRowHeight + (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20; // +20 for time markers
+      const noteHeight = keyHeight - 2;
+      const radius = noteHeight / 2;
       
       ctx.fillStyle = 'rgba(239, 68, 68, 0.5)';
-      ctx.fillRect(startX, y, width, keyHeight);
+      
+      // Draw rounded note for the current note being edited
+      ctx.beginPath();
+      ctx.moveTo(startX + radius, y);
+      ctx.lineTo(startX + width - radius, y);
+      ctx.quadraticCurveTo(startX + width, y, startX + width, y + radius);
+      ctx.lineTo(startX + width, y + noteHeight - radius);
+      ctx.quadraticCurveTo(startX + width, y + noteHeight, startX + width - radius, y + noteHeight);
+      ctx.lineTo(startX + radius, y + noteHeight);
+      ctx.quadraticCurveTo(startX, y + noteHeight, startX, y + noteHeight - radius);
+      ctx.lineTo(startX, y + radius);
+      ctx.quadraticCurveTo(startX, y, startX + radius, y);
+      ctx.fill();
       
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.rect(startX, y, width, keyHeight);
       ctx.stroke();
     }
   }
