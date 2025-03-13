@@ -56,7 +56,7 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
     if (!ctx) return;
 
     if (layoutType === 'traditional') {
-      canvas.width = Math.max(canvas.width, 1000);
+      canvas.width = Math.max(canvas.width, 60vw);
       
       renderPianoRoll(
         ctx,
