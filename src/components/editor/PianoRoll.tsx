@@ -1,10 +1,12 @@
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PianoRollToolbar } from './pianoroll/PianoRollToolbar';
 import { PianoRollCanvas } from './pianoroll/PianoRollCanvas';
 import { usePianoRollState } from '@/hooks/usePianoRollState';
-import { Note } from '@/types/pianoRoll';
+import { Note, PianoRollLayoutType } from '@/types/pianoRoll';
+import { Button } from "@/components/ui/button";
+import { FileText, Grid } from 'lucide-react';
 
 interface PianoRollProps {
   duration: number;
@@ -17,6 +19,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   zoom,
   onZoomChange 
 }) => {
+  const [layoutType, setLayoutType] = useState<PianoRollLayoutType>('sheet-music');
+  
   const {
     notes,
     setNotes,
@@ -59,6 +63,12 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   const handleZoomOut = () => {
     const newZoom = Math.max(zoom / 1.5, 0.1);
     if (onZoomChange) onZoomChange(newZoom);
+  };
+  
+  const toggleLayout = () => {
+    setLayoutType(prevLayout => 
+      prevLayout === 'traditional' ? 'sheet-music' : 'traditional'
+    );
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -319,23 +329,36 @@ const PianoRoll: React.FC<PianoRollProps> = ({
 
   return (
     <div className="piano-roll-container flex flex-col gap-2">
-      <PianoRollToolbar
-        activeTool={activeTool}
-        setActiveTool={setActiveTool}
-        snapValue={snapValue}
-        setSnapValue={setSnapValue}
-        isPlaying={isPlaying}
-        togglePlayback={togglePlayback}
-        resetPlayback={resetPlayback}
-        handleZoomIn={handleZoomIn}
-        handleZoomOut={handleZoomOut}
-        loopEnabled={loopSettings.enabled}
-        toggleLoopMode={toggleLoopMode}
-        clearAllNotes={clearAllNotes}
-      />
+      <div className="flex justify-between items-center">
+        <PianoRollToolbar
+          activeTool={activeTool}
+          setActiveTool={setActiveTool}
+          snapValue={snapValue}
+          setSnapValue={setSnapValue}
+          isPlaying={isPlaying}
+          togglePlayback={togglePlayback}
+          resetPlayback={resetPlayback}
+          handleZoomIn={handleZoomIn}
+          handleZoomOut={handleZoomOut}
+          loopEnabled={loopSettings.enabled}
+          toggleLoopMode={toggleLoopMode}
+          clearAllNotes={clearAllNotes}
+        />
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={toggleLayout}
+          className="flex items-center gap-1"
+        >
+          {layoutType === 'traditional' 
+            ? <><Grid className="h-4 w-4" /> Traditional</> 
+            : <><FileText className="h-4 w-4" /> Sheet Music</>}
+        </Button>
+      </div>
       
       <ScrollArea className="border border-zinc-700 rounded-md bg-zinc-900">
-        <div className="w-full h-[400px] overflow-auto">
+        <div className={`w-full ${layoutType === 'sheet-music' ? 'h-[600px]' : 'h-[400px]'} overflow-auto`}>
           <PianoRollCanvas
             notes={notes}
             isDragging={isDragging}
@@ -347,6 +370,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
             loopSettings={loopSettings}
             dragStartX={dragStartX}
             zoom={zoom}
+            layoutType={layoutType}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}

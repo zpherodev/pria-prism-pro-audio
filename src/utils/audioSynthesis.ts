@@ -75,11 +75,12 @@ export const playNote = (
 // Playback scheduler for piano roll
 export class NoteScheduler {
   private audioContext: AudioContext;
-  private activeNotes: Map<string, { oscillator: OscillatorNode; gain: GainNode }>;
+  private activeNotes: Map<string, { oscillator: OscillatorNode; gain: GainNode; endTime: number }>;
   private isPlaying: boolean = false;
   private startTime: number = 0;
   private currentPosition: number = 0;
   private playbackSpeed: number = 1.0;
+  private cleanupInterval: number | null = null;
 
   constructor() {
     this.audioContext = new AudioContext();
@@ -96,6 +97,20 @@ export class NoteScheduler {
     this.isPlaying = true;
     this.currentPosition = position;
     this.startTime = this.audioContext.currentTime;
+    
+    // Start cleanup interval to ensure notes stop properly
+    if (!this.cleanupInterval) {
+      this.cleanupInterval = window.setInterval(() => this.cleanupExpiredNotes(), 100);
+    }
+  }
+
+  private cleanupExpiredNotes(): void {
+    const now = this.audioContext.currentTime;
+    this.activeNotes.forEach((note, id) => {
+      if (note.endTime <= now) {
+        this.stopNote(id);
+      }
+    });
   }
 
   public stopPlayback(): void {
@@ -108,9 +123,15 @@ export class NoteScheduler {
     this.activeNotes.forEach((note, id) => {
       this.stopNote(id);
     });
+    
+    // Clear cleanup interval
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
   }
 
-  public playNote(noteId: string, midiNote: number, velocity: number = 100): void {
+  public playNote(noteId: string, midiNote: number, velocity: number = 100, duration: number = 0.5): void {
     if (this.activeNotes.has(noteId)) {
       this.stopNote(noteId);
     }
@@ -128,27 +149,37 @@ export class NoteScheduler {
     applyEnvelope(gainNode, this.audioContext, 0.01, 0.1, 0.7, 0.2);
     
     oscillator.start();
-    this.activeNotes.set(noteId, { oscillator, gain: gainNode });
+    const endTime = this.audioContext.currentTime + duration;
+    this.activeNotes.set(noteId, { oscillator, gain: gainNode, endTime });
+    
+    // Automatically schedule note to stop
+    gainNode.gain.setValueAtTime(gainNode.gain.value, endTime - 0.1);
+    gainNode.gain.linearRampToValueAtTime(0, endTime);
+    oscillator.stop(endTime + 0.1);
   }
 
   public stopNote(noteId: string): void {
     const note = this.activeNotes.get(noteId);
     if (!note) return;
     
-    const { gain } = note;
+    const { gain, oscillator } = note;
     const currentTime = this.audioContext.currentTime;
     
     // Release envelope
+    gain.gain.cancelScheduledValues(currentTime);
+    gain.gain.setValueAtTime(gain.gain.value, currentTime);
     gain.gain.linearRampToValueAtTime(0, currentTime + 0.1);
     
-    // Remove from active notes after release
-    setTimeout(() => {
-      const noteToStop = this.activeNotes.get(noteId);
-      if (noteToStop) {
-        noteToStop.oscillator.stop();
-        this.activeNotes.delete(noteId);
-      }
-    }, 100);
+    try {
+      // Stop oscillator after release
+      oscillator.stop(currentTime + 0.2);
+    } catch (e) {
+      // Oscillator might have already stopped
+      console.log("Note already stopped");
+    }
+    
+    // Remove from active notes
+    this.activeNotes.delete(noteId);
   }
 
   public get currentTime(): number {
@@ -191,23 +222,28 @@ export class NoteScheduler {
           
           if (noteStartTime <= 0) {
             // Play immediately if the note should already be playing
-            this.playNote(note.id, note.key, note.velocity);
+            this.playNote(note.id, note.key, note.velocity, note.duration);
           } else {
             // Schedule the note to play in the future
             setTimeout(() => {
               if (this.isPlaying) {
-                this.playNote(note.id, note.key, note.velocity);
+                this.playNote(note.id, note.key, note.velocity, note.duration);
               }
             }, noteStartTime * 1000);
           }
-          
-          // Schedule when to stop the note
-          const noteDuration = note.duration;
-          setTimeout(() => {
-            this.stopNote(note.id);
-          }, (noteStartTime + noteDuration) * 1000);
         }
       }
     });
+  }
+  
+  // Clean up resources when done
+  public dispose(): void {
+    this.stopPlayback();
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.activeNotes.clear();
+    this.audioContext.close();
   }
 }

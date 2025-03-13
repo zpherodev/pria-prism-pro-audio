@@ -17,3 +17,11 @@ export type SnapValue = '1/32' | '1/16' | '1/8' | '1/4' | '1/2' | '1';
 
 export type DragMode = 'create' | 'move' | 'resize' | 'loopStart' | 'loopEnd' | 'loopRegion';
 export type ToolType = 'select' | 'pencil' | 'erase' | 'loop';
+
+export type PianoRollLayoutType = 'traditional' | 'sheet-music';
+
+export interface SheetMusicSettings {
+  beatsPerMeasure: number;
+  measuresPerRow: number;
+  totalRows: number;
+}

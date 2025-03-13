@@ -40,14 +40,18 @@ export const AudioEditor = () => {
     }
   };
   
-  return <div className="flex flex-col gap-4">
+  return (
+    <div className="flex flex-col gap-4">
       {/* Main Content Area */}
       <div className={`grid gap-4 ${getGridClasses()}`}>
         {/* Left Panel - Media Bin with collapse toggle */}
         <div className={`panel flex flex-col ${leftPanelCollapsed ? "items-center" : ""}`}>
-          {leftPanelCollapsed ? <Button variant="ghost" size="icon" onClick={() => setLeftPanelCollapsed(false)} className="mb-2">
+          {leftPanelCollapsed ? (
+            <Button variant="ghost" size="icon" onClick={() => setLeftPanelCollapsed(false)} className="mb-2">
               <ChevronRight className="h-4 w-4" />
-            </Button> : <>
+            </Button>
+          ) : (
+            <>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium">Media Library</h3>
                 <Button variant="ghost" size="icon" onClick={() => setLeftPanelCollapsed(true)} className="bg-zinc-900 hover:bg-zinc-800 text-zinc-500">
@@ -55,22 +59,31 @@ export const AudioEditor = () => {
                 </Button>
               </div>
               <MediaBin onFileSelect={file => {
-            setSelectedFile(file);
-            // Reset audio buffer when file changes
-            setAudioBuffer(null);
-          }} />
-            </>}
+                setSelectedFile(file);
+                // Reset audio buffer when file changes
+                setAudioBuffer(null);
+              }} />
+            </>
+          )}
         </div>
 
-        {/* Center Panel - Waveform Preview and Timeline */}
+        {/* Center Panel - Dynamic Content based on active tab */}
         <div className="flex flex-col gap-4">
-          <div className="panel flex-grow">
-            <Preview file={selectedFile} onAudioBufferLoaded={handleAudioBufferLoaded} />
-          </div>
+          {/* Preview is only shown when timeline is active */}
+          {activeTab === 'timeline' && (
+            <div className="panel flex-grow">
+              <Preview file={selectedFile} onAudioBufferLoaded={handleAudioBufferLoaded} />
+            </div>
+          )}
           
           {/* Tabs for Timeline and Piano Roll */}
-          <div className="panel">
-            <Tabs defaultValue="timeline" value={activeTab} onValueChange={(value) => setActiveTab(value as 'timeline' | 'pianoroll')}>
+          <div className={`panel ${activeTab === 'pianoroll' ? 'flex-grow' : ''}`}>
+            <Tabs 
+              defaultValue="timeline" 
+              value={activeTab} 
+              onValueChange={(value) => setActiveTab(value as 'timeline' | 'pianoroll')}
+              className={activeTab === 'pianoroll' ? 'h-full flex flex-col' : ''}
+            >
               <TabsList className="grid grid-cols-2 mb-4">
                 <TabsTrigger value="timeline">Multitrack Timeline</TabsTrigger>
                 <TabsTrigger value="pianoroll" className="flex items-center gap-1">
@@ -79,7 +92,7 @@ export const AudioEditor = () => {
                 </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="timeline">
+              <TabsContent value="timeline" className="flex-grow">
                 <Timeline 
                   label="Multitrack Timeline" 
                   audioBuffer={audioBuffer} 
@@ -88,7 +101,7 @@ export const AudioEditor = () => {
                 />
               </TabsContent>
               
-              <TabsContent value="pianoroll">
+              <TabsContent value="pianoroll" className="flex-grow h-full">
                 <PianoRoll 
                   duration={audioBuffer?.duration || 30} 
                   zoom={zoom}
@@ -101,9 +114,12 @@ export const AudioEditor = () => {
 
         {/* Right Panel - Effects with collapse toggle */}
         <div className={`panel flex flex-col ${rightPanelCollapsed ? "items-center" : ""}`}>
-          {rightPanelCollapsed ? <Button variant="ghost" size="icon" onClick={() => setRightPanelCollapsed(false)} className="mb-2">
+          {rightPanelCollapsed ? (
+            <Button variant="ghost" size="icon" onClick={() => setRightPanelCollapsed(false)} className="mb-2">
               <ChevronLeft className="h-4 w-4" />
-            </Button> : <>
+            </Button>
+          ) : (
+            <>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium">Effects</h3>
                 <Button variant="ghost" size="icon" onClick={() => setRightPanelCollapsed(true)} className="bg-zinc-900 hover:bg-zinc-800 text-zinc-500">
@@ -111,8 +127,10 @@ export const AudioEditor = () => {
                 </Button>
               </div>
               <EffectsPanel audioBuffer={audioBuffer} />
-            </>}
+            </>
+          )}
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
