@@ -55,8 +55,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     snapTimeToGrid
   } = usePianoRollState(duration);
 
-  const keyWidth = 60;
-  const keyHeight = 20;
+  const keyWidth = 30;
+  const keyHeight = 10;
   const totalKeys = 88; // Piano standard
   const lowestKey = 21; // A0 in MIDI
 
