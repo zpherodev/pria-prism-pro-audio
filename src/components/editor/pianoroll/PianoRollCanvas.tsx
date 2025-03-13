@@ -18,6 +18,7 @@ interface PianoRollCanvasProps {
   zoom: number;
   layoutType: PianoRollLayoutType;
   sheetMusicSettings: SheetMusicSettings;
+  rowIndex?: number; // Added rowIndex for multi-row support
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: () => void;
@@ -38,6 +39,7 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
   zoom,
   layoutType,
   sheetMusicSettings,
+  rowIndex = 0, // Default to first row if not specified
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -88,9 +90,10 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
         {
           beatsPerMeasure: sheetMusicSettings.beatsPerMeasure,
           measuresPerRow: sheetMusicSettings.measuresPerRow,
-          totalRows: sheetMusicSettings.totalRows,
-          pixelsPerBeat: 50 * zoom,
-          rowSpacing: 30 // Add spacing between rows
+          totalRows: 1, // Always render just 1 row per canvas
+          pixelsPerBeat: 40 * zoom, // Reduced from 50 to make keys smaller
+          rowSpacing: 20, // Reduced spacing between rows
+          rowIndex: rowIndex // Pass the row index to render the correct segment
         }
       );
     }
@@ -106,7 +109,8 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
     dragMode,
     snapValue,
     layoutType,
-    sheetMusicSettings
+    sheetMusicSettings,
+    rowIndex
   ]);
 
   return (
@@ -118,6 +122,7 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
       onMouseLeave={onMouseLeave}
       onContextMenu={onContextMenu}
       className="min-w-full"
+      data-row-index={rowIndex} // Add data attribute to identify the row
     />
   );
 };

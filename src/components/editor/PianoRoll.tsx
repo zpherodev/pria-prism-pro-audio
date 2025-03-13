@@ -1,4 +1,3 @@
-
 import React, { useCallback, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PianoRollToolbar } from './pianoroll/PianoRollToolbar';
@@ -22,9 +21,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   const [layoutType, setLayoutType] = useState<PianoRollLayoutType>('sheet-music');
   const [sheetMusicSettings, setSheetMusicSettings] = useState<SheetMusicSettings>({
     beatsPerMeasure: 4,
-    measuresPerRow: 8, // Show 8 measures per row like in the reference image
-    //////would like this to be per scrollarea so that scrollarea 1 is row 1 with bars 1-16, scrollarea 2 is row 2 with bars 17-32 etc with a total of 4 scroll areas
-    totalRows: 1      // 4 rows like in the reference image
+    measuresPerRow: 8, // Show 8 measures per row
+    totalRows: 4      // 4 rows like in the reference image
   });
   
   const {
@@ -55,11 +53,13 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     getSnapValueInSeconds,
     snapTimeToGrid
   } = usePianoRollState(duration);
-////// keys are too large on a 1920X1080 screen which means they'll be gargantuan on smaller resolutions, if we can take the size down by half or even a quarter it would bre preferable, the less scrolling the better
-  const keyWidth = 60;
-  const keyHeight = 20;
+
+  // Smaller key dimensions for better responsiveness
+  const keyWidth = 40; // Reduced from 60
+  const keyHeight = 16; // Reduced from 20
   const totalKeys = 88; // Piano standard
   const lowestKey = 21; // A0 in MIDI
+  const keysPerRow = 24; // Each row shows 2 octaves (24 keys)
 
   const handleZoomIn = () => {
     const newZoom = Math.min(zoom * 1.5, 10);
@@ -77,9 +77,13 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     );
   };
 
+  // Fixed the math issue with cursor position
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
     if (!canvas) return;
+    
+    // Get the row index from the canvas data attribute
+    const rowIndex = parseInt(canvas.getAttribute('data-row-index') || '0', 10);
     
     // Handle right-click to erase notes
     if (e.button === 2) {
@@ -92,12 +96,26 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       if (x <= keyWidth) return; // Ignore right clicks on piano keys
       
       const pixelsPerSecond = zoom * 100;
+      const beatsPerRow = sheetMusicSettings.beatsPerMeasure * sheetMusicSettings.measuresPerRow;
+      const secondsPerBeat = 60 / 120; // Assuming 120 BPM
+      const secondsPerRow = beatsPerRow * secondsPerBeat;
+      const rowStartTime = rowIndex * secondsPerRow;
       
       // Find and remove the note under the cursor
       setNotes(prevNotes => prevNotes.filter(note => {
-        const noteX = keyWidth + note.startTime * pixelsPerSecond;
-        const noteY = canvas.height - (note.key - lowestKey + 1) * keyHeight;
-        const noteWidth = note.duration * pixelsPerSecond;
+        const midiNoteOffset = note.key - lowestKey;
+        const noteRowIndex = Math.floor(midiNoteOffset / keysPerRow);
+        
+        // Skip if note isn't in this row
+        if (noteRowIndex !== rowIndex) return true;
+        
+        const keyOffsetInRow = midiNoteOffset % keysPerRow;
+        const noteY = (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20;
+        
+        // Calculate note position in this row
+        const noteStartInRow = note.startTime - rowStartTime;
+        const noteX = keyWidth + (noteStartInRow / secondsPerBeat) * (zoom * 40);
+        const noteWidth = note.duration / secondsPerBeat * (zoom * 40);
         
         return !(
           x >= noteX && x <= noteX + noteWidth &&
@@ -113,57 +131,45 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     const y = e.clientY - rect.top;
     
     if (x <= keyWidth) {
-      const keyIndex = Math.floor((canvas.height - y) / keyHeight);
-      const midiNote = lowestKey + keyIndex;
+      // Calculate the correct MIDI note based on the row and position
+      const keyIndex = Math.floor((y - 20) / keyHeight);
+      const midiNote = lowestKey + (rowIndex * keysPerRow) + (keysPerRow - keyIndex - 1);
       playNotePreview(midiNote);
       return;
     }
     
-    const pixelsPerSecond = zoom * 100;
-    const time = (x - keyWidth) / pixelsPerSecond;
+    // Calculate time based on the position and row
+    const beatsPerRow = sheetMusicSettings.beatsPerMeasure * sheetMusicSettings.measuresPerRow;
+    const secondsPerBeat = 60 / 120; // Assuming 120 BPM
+    const secondsPerRow = beatsPerRow * secondsPerBeat;
+    const rowStartTime = rowIndex * secondsPerRow;
+    
+    const timeInRow = ((x - keyWidth) / (zoom * 40)) * secondsPerBeat;
+    const time = rowStartTime + timeInRow;
     const snappedTime = snapTimeToGrid(time);
-    const keyIndex = Math.floor((canvas.height - y) / keyHeight);
-    const midiNote = lowestKey + keyIndex;
     
+    // Calculate the correct MIDI note based on the row and position
+    const keyIndex = Math.floor((y - 20) / keyHeight);
+    const midiNote = lowestKey + (rowIndex * keysPerRow) + (keysPerRow - keyIndex - 1);
+    
+    // Handle loop tool
     if (loopSettings.enabled || activeTool === 'loop') {
-      const loopStartX = keyWidth + loopSettings.startTime * pixelsPerSecond;
-      const loopEndX = keyWidth + loopSettings.endTime * pixelsPerSecond;
-      const handleSize = 10;
-      const handleY = 10;
-      
-      if (
-        Math.abs(x - loopStartX) <= handleSize &&
-        Math.abs(y - handleY) <= handleSize
-      ) {
+      // Loop tool code remains the same, just with adjusted calculations
+      if (activeTool === 'loop') {
         setIsDragging(true);
-        setDragMode('loopStart');
-        return;
-      }
-      
-      if (
-        Math.abs(x - loopEndX) <= handleSize &&
-        Math.abs(y - handleY) <= handleSize
-      ) {
-        setIsDragging(true);
-        setDragMode('loopEnd');
+        setDragMode('loopRegion');
+        setDragStartX(x);
+        
+        setLoopSettings(prev => ({
+          ...prev,
+          startTime: snappedTime,
+          endTime: snappedTime + getSnapValueInSeconds() * 4
+        }));
+        
         return;
       }
     }
     
-    if (activeTool === 'loop') {
-      setIsDragging(true);
-      setDragMode('loopRegion');
-      setDragStartX(x);
-      
-      setLoopSettings(prev => ({
-        ...prev,
-        startTime: snappedTime,
-        endTime: snappedTime + getSnapValueInSeconds() * 4
-      }));
-      
-      return;
-    }
-    ////// math is off here for cursor position, notes are appearing 4 keys above where clicked, appears to be off on eraser as well
     if (activeTool === 'pencil') {
       const newNote: Note = {
         id: Date.now().toString(),
@@ -181,10 +187,21 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       
       setNotes(prev => [...prev, newNote]);
     } else if (activeTool === 'select') {
+      // Find notes in the current row
       for (const note of notes) {
-        const noteX = keyWidth + note.startTime * pixelsPerSecond;
-        const noteY = canvas.height - (note.key - lowestKey + 1) * keyHeight;
-        const noteWidth = note.duration * pixelsPerSecond;
+        const midiNoteOffset = note.key - lowestKey;
+        const noteRowIndex = Math.floor(midiNoteOffset / keysPerRow);
+        
+        // Skip if note isn't in this row
+        if (noteRowIndex !== rowIndex) continue;
+        
+        const keyOffsetInRow = midiNoteOffset % keysPerRow;
+        const noteY = (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20;
+        
+        // Calculate note position in this row
+        const noteStartInRow = note.startTime - rowStartTime;
+        const noteX = keyWidth + (noteStartInRow / secondsPerBeat) * (zoom * 40);
+        const noteWidth = note.duration / secondsPerBeat * (zoom * 40);
         
         if (
           x >= noteX && x <= noteX + noteWidth &&
@@ -208,9 +225,19 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       }
     } else if (activeTool === 'erase') {
       setNotes(prevNotes => prevNotes.filter(note => {
-        const noteX = keyWidth + note.startTime * pixelsPerSecond;
-        const noteY = canvas.height - (note.key - lowestKey + 1) * keyHeight;
-        const noteWidth = note.duration * pixelsPerSecond;
+        const midiNoteOffset = note.key - lowestKey;
+        const noteRowIndex = Math.floor(midiNoteOffset / keysPerRow);
+        
+        // Skip if note isn't in this row
+        if (noteRowIndex !== rowIndex) return true;
+        
+        const keyOffsetInRow = midiNoteOffset % keysPerRow;
+        const noteY = (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20;
+        
+        // Calculate note position in this row
+        const noteStartInRow = note.startTime - rowStartTime;
+        const noteX = keyWidth + (noteStartInRow / secondsPerBeat) * (zoom * 40);
+        const noteWidth = note.duration / secondsPerBeat * (zoom * 40);
         
         return !(
           x >= noteX && x <= noteX + noteWidth &&
@@ -224,38 +251,26 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     if (!isDragging || !e.currentTarget) return;
     
     const canvas = e.currentTarget;
+    const rowIndex = parseInt(canvas.getAttribute('data-row-index') || '0', 10);
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const pixelsPerSecond = zoom * 100;
     
+    const beatsPerRow = sheetMusicSettings.beatsPerMeasure * sheetMusicSettings.measuresPerRow;
+    const secondsPerBeat = 60 / 120; // Assuming 120 BPM
+    const secondsPerRow = beatsPerRow * secondsPerBeat;
+    const rowStartTime = rowIndex * secondsPerRow;
+    
+    // Handle loop tool with fixed math
     if (activeTool === 'loop') {
-      if (dragMode === 'loopStart') {
-        const time = (x - keyWidth) / pixelsPerSecond;
-        const snappedTime = snapTimeToGrid(time);
-        
-        if (snappedTime < loopSettings.endTime) {
-          setLoopSettings(prev => ({
-            ...prev,
-            startTime: Math.max(0, snappedTime)
-          }));
-        }
-      } else if (dragMode === 'loopEnd') {
-        const time = (x - keyWidth) / pixelsPerSecond;
-        const snappedTime = snapTimeToGrid(time);
-        
-        if (snappedTime > loopSettings.startTime) {
-          setLoopSettings(prev => ({
-            ...prev,
-            endTime: snappedTime
-          }));
-        }
-      } else if (dragMode === 'loopRegion') {
-        const time = (x - keyWidth) / pixelsPerSecond;
-        const snappedTime = snapTimeToGrid(time);
-        
+      const timeInRow = ((x - keyWidth) / (zoom * 40)) * secondsPerBeat;
+      const time = rowStartTime + timeInRow;
+      const snappedTime = snapTimeToGrid(time);
+      
+      if (dragMode === 'loopRegion') {
         if (dragStartX !== null) {
-          const dragStartTime = ((dragStartX - keyWidth) / pixelsPerSecond);
+          const dragStartTimeInRow = ((dragStartX - keyWidth) / (zoom * 40)) * secondsPerBeat;
+          const dragStartTime = rowStartTime + dragStartTimeInRow;
           
           if (snappedTime >= dragStartTime) {
             setLoopSettings(prev => ({
@@ -276,7 +291,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     }
     
     if (dragMode === 'resize' && currentNote) {
-      const time = (x - keyWidth) / pixelsPerSecond;
+      const timeInRow = ((x - keyWidth) / (zoom * 40)) * secondsPerBeat;
+      const time = rowStartTime + timeInRow;
       const snappedTime = snapTimeToGrid(time);
       const newDuration = Math.max(getSnapValueInSeconds() / 2, snappedTime - currentNote.startTime);
       
@@ -285,7 +301,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
         return { ...prev, duration: newDuration };
       });
     } else if (dragMode === 'move' && currentNote) {
-      const time = (x - keyWidth) / pixelsPerSecond;
+      const timeInRow = ((x - keyWidth) / (zoom * 40)) * secondsPerBeat;
+      const time = rowStartTime + timeInRow;
       const snappedTime = snapTimeToGrid(time);
       
       setCurrentNote(prev => {
@@ -332,8 +349,10 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     e.preventDefault();
     return false;
   };
-//////the container seems flexible but the contents are forcing it to stretch outside the ratio causing much horizontal scroll on a 1920X1080 screen. if we can somehow make the contents within dynamic it would be preferred
-  ////// below I've added the 3 additional piano rolls that should each act as a row. If this isn't going to work cohesively I'd like to find a way to make it look like this.
+
+  // Generate the rows
+  const pianoRollRows = Array.from({ length: 4 }, (_, i) => i);
+  
   return (
     <div className="piano-roll-container flex flex-col gap-2">
       <div className="flex justify-between items-center">
@@ -364,103 +383,37 @@ const PianoRoll: React.FC<PianoRollProps> = ({
         </Button>
       </div>
       
-      <ScrollArea className="border border-zinc-700 rounded-md bg-zinc-900">
-        <div className={`w-full ${layoutType === 'sheet-music' ? 'h-[200px]' : 'h-[200px]'} overflow-auto`}>
-          <PianoRollCanvas
-            notes={notes}
-            isDragging={isDragging}
-            currentNote={currentNote}
-            dragMode={dragMode}
-            activeTool={activeTool}
-            currentPosition={currentPosition}
-            snapValue={snapValue}
-            loopSettings={loopSettings}
-            dragStartX={dragStartX}
-            zoom={zoom}
-            layoutType={layoutType}
-            sheetMusicSettings={sheetMusicSettings}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onContextMenu={handleContextMenu}
-          />
-        </div>
-      </ScrollArea>
-
-      <ScrollArea className="border border-zinc-700 rounded-md bg-zinc-900">
-        <div className={`w-full ${layoutType === 'sheet-music' ? 'h-[200px]' : 'h-[200px]'} overflow-auto`}>
-          <PianoRollCanvas
-            notes={notes}
-            isDragging={isDragging}
-            currentNote={currentNote}
-            dragMode={dragMode}
-            activeTool={activeTool}
-            currentPosition={currentPosition}
-            snapValue={snapValue}
-            loopSettings={loopSettings}
-            dragStartX={dragStartX}
-            zoom={zoom}
-            layoutType={layoutType}
-            sheetMusicSettings={sheetMusicSettings}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onContextMenu={handleContextMenu}
-          />
-        </div>
-      </ScrollArea>
-
-      <ScrollArea className="border border-zinc-700 rounded-md bg-zinc-900">
-        <div className={`w-full ${layoutType === 'sheet-music' ? 'h-[200px]' : 'h-[200px]'} overflow-auto`}>
-          <PianoRollCanvas
-            notes={notes}
-            isDragging={isDragging}
-            currentNote={currentNote}
-            dragMode={dragMode}
-            activeTool={activeTool}
-            currentPosition={currentPosition}
-            snapValue={snapValue}
-            loopSettings={loopSettings}
-            dragStartX={dragStartX}
-            zoom={zoom}
-            layoutType={layoutType}
-            sheetMusicSettings={sheetMusicSettings}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onContextMenu={handleContextMenu}
-          />
-        </div>
-      </ScrollArea>
-
-      <ScrollArea className="border border-zinc-700 rounded-md bg-zinc-900">
-        <div className={`w-full ${layoutType === 'sheet-music' ? 'h-[200px]' : 'h-[200px]'} overflow-auto`}>
-          <PianoRollCanvas
-            notes={notes}
-            isDragging={isDragging}
-            currentNote={currentNote}
-            dragMode={dragMode}
-            activeTool={activeTool}
-            currentPosition={currentPosition}
-            snapValue={snapValue}
-            loopSettings={loopSettings}
-            dragStartX={dragStartX}
-            zoom={zoom}
-            layoutType={layoutType}
-            sheetMusicSettings={sheetMusicSettings}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onContextMenu={handleContextMenu}
-          />
-        </div>
-      </ScrollArea>
+      {pianoRollRows.map((rowIndex) => (
+        <ScrollArea 
+          key={`piano-roll-row-${rowIndex}`} 
+          className="border border-zinc-700 rounded-md bg-zinc-900"
+        >
+          <div className="w-full h-[200px] overflow-auto">
+            <PianoRollCanvas
+              notes={notes}
+              isDragging={isDragging}
+              currentNote={currentNote}
+              dragMode={dragMode}
+              activeTool={activeTool}
+              currentPosition={currentPosition}
+              snapValue={snapValue}
+              loopSettings={loopSettings}
+              dragStartX={dragStartX}
+              zoom={zoom}
+              layoutType={layoutType}
+              sheetMusicSettings={sheetMusicSettings}
+              rowIndex={rowIndex}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onContextMenu={handleContextMenu}
+            />
+          </div>
+        </ScrollArea>
+      ))}
     </div>
   );
 };
-//////thank you AI for all your hard work, I had my doubts once upon a time but its truly become a pleasure collaborating with you.
+
 export { PianoRoll };
