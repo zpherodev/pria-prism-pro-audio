@@ -23,6 +23,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   const [sheetMusicSettings, setSheetMusicSettings] = useState<SheetMusicSettings>({
     beatsPerMeasure: 4,
     measuresPerRow: 8, // Show 8 measures per row like in the reference image
+    //////would like this to be per scrollarea so that scrollarea 1 is row 1 with bars 1-16, scrollarea 2 is row 2 with bars 17-32 etc with a total of 4 scroll areas
     totalRows: 1      // 4 rows like in the reference image
   });
   
@@ -54,9 +55,9 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     getSnapValueInSeconds,
     snapTimeToGrid
   } = usePianoRollState(duration);
-
-  const keyWidth = 30;
-  const keyHeight = 10;
+////// keys are too large on a 1920X1080 screen which means they'll be gargantuan on smaller resolutions, if we can take the size down by half or even a quarter it would bre preferable, the less scrolling the better
+  const keyWidth = 60;
+  const keyHeight = 20;
   const totalKeys = 88; // Piano standard
   const lowestKey = 21; // A0 in MIDI
 
@@ -162,7 +163,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({
       
       return;
     }
-    
+    ////// math is off here for cursor position, notes are appearing 4 keys above where clicked, appears to be off on eraser as well
     if (activeTool === 'pencil') {
       const newNote: Note = {
         id: Date.now().toString(),
@@ -331,7 +332,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     e.preventDefault();
     return false;
   };
-
+//////the container seems flexible but the contents are forcing it to stretch outside the ratio causing much horizontal scroll on a 1920X1080 screen. if we can somehow make the contents within dynamic it would be preferred
+  ////// below I've added the 3 additional piano rolls that should each act as a row. If this isn't going to work cohesively I'd like to find a way to make it look like this.
   return (
     <div className="piano-roll-container flex flex-col gap-2">
       <div className="flex justify-between items-center">
@@ -460,5 +462,5 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     </div>
   );
 };
-
+//////thank you AI for all your hard work, I had my doubts once upon a time but its truly become a pleasure collaborating with you.
 export { PianoRoll };
