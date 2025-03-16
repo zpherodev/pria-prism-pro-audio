@@ -14,7 +14,7 @@ export const notesToMidiFile = (notes: Note[]): Blob => {
   notes.forEach(note => {
     // Create a new note event
     const midiNote = new midiWriter.NoteEvent({
-      pitch: note.midiNote,
+      pitch: note.key,
       duration: 'T' + Math.round(note.duration * 128), // Convert to ticks
       startTick: Math.round(note.startTime * 128), // Convert to ticks
       velocity: note.velocity || 100 // Default to 100 if not specified
@@ -75,7 +75,7 @@ export const midiFileToNotes = async (file: File): Promise<Note[]> => {
                 
                 notes.push({
                   id: `midi-${notes.length}`,
-                  midiNote,
+                  key: midiNote,
                   startTime,
                   duration,
                   velocity
