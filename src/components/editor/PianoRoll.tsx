@@ -8,6 +8,9 @@ import { useAutomationState } from '@/hooks/useAutomationState';
 import { Note, SheetMusicSettings } from '@/types/pianoRoll';
 import { AutomationPanel } from './automation/AutomationPanel';
 import { Button } from "@/components/ui/button";
+import { PianoRollRows } from './pianoroll/PianoRollRows';
+import { AutomationIntegration } from './pianoroll/AutomationIntegration';
+import { handleMouseDown, handleMouseMove, handleMouseUp } from './pianoroll/PianoRollMouseHandlers';
 
 interface PianoRollProps {
   duration: number;
@@ -79,307 +82,61 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     if (onZoomChange) onZoomChange(newZoom);
   };
 
-  // Fixed the math issue with cursor position
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = e.currentTarget;
-    if (!canvas) return;
-    
-    // Get the row index from the canvas data attribute
-    const rowIndex = parseInt(canvas.getAttribute('data-row-index') || '0', 10);
-    
-    // Handle right-click to erase notes
-    if (e.button === 2) {
-      e.preventDefault(); // Prevent context menu
-      
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      if (x <= keyWidth) return; // Ignore right clicks on piano keys
-      
-      const pixelsPerSecond = zoom * 100;
-      const beatsPerRow = sheetMusicSettings.beatsPerMeasure * sheetMusicSettings.measuresPerRow;
-      const secondsPerBeat = 60 / 120; // Assuming 120 BPM
-      const secondsPerRow = beatsPerRow * secondsPerBeat;
-      const rowStartTime = rowIndex * secondsPerRow;
-      
-      // Find and remove the note under the cursor
-      setNotes(prevNotes => prevNotes.filter(note => {
-        const midiNoteOffset = note.key - lowestKey;
-        const noteRowIndex = Math.floor(midiNoteOffset / keysPerRow);
-        
-        // Skip if note isn't in this row
-        if (noteRowIndex !== rowIndex) return true;
-        
-        const keyOffsetInRow = midiNoteOffset % keysPerRow;
-        const noteY = (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20;
-        
-        // Calculate note position in this row
-        const noteStartInRow = note.startTime - rowStartTime;
-        const noteX = keyWidth + (noteStartInRow / secondsPerBeat) * (zoom * 40);
-        const noteWidth = note.duration / secondsPerBeat * (zoom * 40);
-        
-        return !(
-          x >= noteX && x <= noteX + noteWidth &&
-          y >= noteY && y <= noteY + keyHeight
-        );
-      }));
-      
-      return;
-    }
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    if (x <= keyWidth) {
-      // Calculate the correct MIDI note based on the row and position
-      const keyIndex = Math.floor((y - 20) / keyHeight);
-      const midiNote = lowestKey + (rowIndex * keysPerRow) + (keysPerRow - keyIndex - 1);
-      playNotePreview(midiNote);
-      return;
-    }
-    
-    // Calculate time based on the position and row
-    const beatsPerRow = sheetMusicSettings.beatsPerMeasure * sheetMusicSettings.measuresPerRow;
-    const secondsPerBeat = 60 / 120; // Assuming 120 BPM
-    const secondsPerRow = beatsPerRow * secondsPerBeat;
-    const rowStartTime = rowIndex * secondsPerRow;
-    
-    const timeInRow = ((x - keyWidth) / (zoom * 40)) * secondsPerBeat;
-    const time = rowStartTime + timeInRow;
-    const snappedTime = snapTimeToGrid(time);
-    
-    // Calculate the correct MIDI note based on the row and position
-    const keyIndex = Math.floor((y - 20) / keyHeight);
-    const midiNote = lowestKey + (rowIndex * keysPerRow) + (keysPerRow - keyIndex - 1);
-    
-    // Handle loop tool
-    if (loopSettings.enabled || activeTool === 'loop') {
-      // Loop tool code remains the same, just with adjusted calculations
-      if (activeTool === 'loop') {
-        setIsDragging(true);
-        setDragMode('loopRegion');
-        setDragStartX(x);
-        
-        setLoopSettings(prev => ({
-          ...prev,
-          startTime: snappedTime,
-          endTime: snappedTime + getSnapValueInSeconds() * 4
-        }));
-        
-        return;
-      }
-    }
-    
-    if (activeTool === 'pencil') {
-      const newNote: Note = {
-        id: Date.now().toString(),
-        key: midiNote,
-        startTime: snappedTime,
-        duration: getSnapValueInSeconds(),
-        velocity: 100
-      };
-      
-      setCurrentNote(newNote);
-      setDragMode('resize');
-      setIsDragging(true);
-      
-      playNotePreview(midiNote);
-      
-      setNotes(prev => [...prev, newNote]);
-    } else if (activeTool === 'select') {
-      // Find notes in the current row
-      for (const note of notes) {
-        const midiNoteOffset = note.key - lowestKey;
-        const noteRowIndex = Math.floor(midiNoteOffset / keysPerRow);
-        
-        // Skip if note isn't in this row
-        if (noteRowIndex !== rowIndex) continue;
-        
-        const keyOffsetInRow = midiNoteOffset % keysPerRow;
-        const noteY = (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20;
-        
-        // Calculate note position in this row
-        const noteStartInRow = note.startTime - rowStartTime;
-        const noteX = keyWidth + (noteStartInRow / secondsPerBeat) * (zoom * 40);
-        const noteWidth = note.duration / secondsPerBeat * (zoom * 40);
-        
-        if (
-          x >= noteX && x <= noteX + noteWidth &&
-          y >= noteY && y <= noteY + keyHeight
-        ) {
-          setCurrentNote(note);
-          
-          if (x > noteX + noteWidth - 10) {
-            setDragMode('resize');
-          } else {
-            setDragMode('move');
-          }
-          
-          setIsDragging(true);
-          
-          setNotes(prev => prev.filter(n => n.id !== note.id));
-          
-          playNotePreview(note.key);
-          break;
-        }
-      }
-    } else if (activeTool === 'erase') {
-      setNotes(prevNotes => prevNotes.filter(note => {
-        const midiNoteOffset = note.key - lowestKey;
-        const noteRowIndex = Math.floor(midiNoteOffset / keysPerRow);
-        
-        // Skip if note isn't in this row
-        if (noteRowIndex !== rowIndex) return true;
-        
-        const keyOffsetInRow = midiNoteOffset % keysPerRow;
-        const noteY = (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20;
-        
-        // Calculate note position in this row
-        const noteStartInRow = note.startTime - rowStartTime;
-        const noteX = keyWidth + (noteStartInRow / secondsPerBeat) * (zoom * 40);
-        const noteWidth = note.duration / secondsPerBeat * (zoom * 40);
-        
-        return !(
-          x >= noteX && x <= noteX + noteWidth &&
-          y >= noteY && y <= noteY + keyHeight
-        );
-      }));
-    }
+  // Create mouse handlers with all required props
+  const mouseHandlerProps = {
+    keyWidth,
+    keyHeight,
+    totalKeys,
+    lowestKey,
+    keysPerRow,
+    zoom,
+    beatsPerMeasure: sheetMusicSettings.beatsPerMeasure,
+    measuresPerRow: sheetMusicSettings.measuresPerRow,
+    snapTimeToGrid,
+    getSnapValueInSeconds,
+    playNotePreview,
+    setNotes,
+    setCurrentNote,
+    setIsDragging,
+    setDragMode,
+    setDragStartX,
+    setLoopSettings,
+    notes,
+    activeTool,
+    loopSettings,
+    dragStartX,
+    isDragging,
+    currentNote,
+    dragMode
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging || !e.currentTarget) return;
-    
-    const canvas = e.currentTarget;
-    const rowIndex = parseInt(canvas.getAttribute('data-row-index') || '0', 10);
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const beatsPerRow = sheetMusicSettings.beatsPerMeasure * sheetMusicSettings.measuresPerRow;
-    const secondsPerBeat = 60 / 120; // Assuming 120 BPM
-    const secondsPerRow = beatsPerRow * secondsPerBeat;
-    const rowStartTime = rowIndex * secondsPerRow;
-    
-    // Handle loop tool with fixed math
-    if (activeTool === 'loop') {
-      const timeInRow = ((x - keyWidth) / (zoom * 40)) * secondsPerBeat;
-      const time = rowStartTime + timeInRow;
-      const snappedTime = snapTimeToGrid(time);
-      
-      if (dragMode === 'loopRegion') {
-        if (dragStartX !== null) {
-          const dragStartTimeInRow = ((dragStartX - keyWidth) / (zoom * 40)) * secondsPerBeat;
-          const dragStartTime = rowStartTime + dragStartTimeInRow;
-          
-          if (snappedTime >= dragStartTime) {
-            setLoopSettings(prev => ({
-              ...prev,
-              startTime: Math.min(dragStartTime, prev.startTime),
-              endTime: Math.max(snappedTime, dragStartTime)
-            }));
-          } else {
-            setLoopSettings(prev => ({
-              ...prev,
-              startTime: Math.min(snappedTime, dragStartTime),
-              endTime: Math.max(dragStartTime, prev.endTime)
-            }));
-          }
-        }
-      }
-      return;
-    }
-    
-    if (dragMode === 'resize' && currentNote) {
-      const timeInRow = ((x - keyWidth) / (zoom * 40)) * secondsPerBeat;
-      const time = rowStartTime + timeInRow;
-      const snappedTime = snapTimeToGrid(time);
-      const newDuration = Math.max(getSnapValueInSeconds() / 2, snappedTime - currentNote.startTime);
-      
-      setCurrentNote(prev => {
-        if (!prev) return null;
-        return { ...prev, duration: newDuration };
-      });
-    } else if (dragMode === 'move' && currentNote) {
-      const timeInRow = ((x - keyWidth) / (zoom * 40)) * secondsPerBeat;
-      const time = rowStartTime + timeInRow;
-      const snappedTime = snapTimeToGrid(time);
-      
-      setCurrentNote(prev => {
-        if (!prev) return null;
-        return { ...prev, startTime: Math.max(0, snappedTime) };
-      });
-    }
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    handleMouseDown(e, mouseHandlerProps);
   };
 
-  const handleMouseUp = useCallback(() => {
-    if (activeTool === 'loop' && dragMode === 'loopRegion') {
-      setLoopSettings(prev => ({
-        ...prev,
-        enabled: true
-      }));
-    } else if (isDragging && currentNote) {
-      setNotes(prev => {
-        if (dragMode === 'resize' || dragMode === 'move') {
-          const overlapIndex = prev.findIndex(note => 
-            note.key === currentNote.key && 
-            note.id !== currentNote.id &&
-            ((currentNote.startTime >= note.startTime && currentNote.startTime < note.startTime + note.duration) ||
-             (currentNote.startTime + currentNote.duration > note.startTime && currentNote.startTime + currentNote.duration <= note.startTime + note.duration) ||
-             (currentNote.startTime <= note.startTime && currentNote.startTime + currentNote.duration >= note.startTime + note.duration))
-          );
-          
-          if (overlapIndex >= 0) {
-            return prev;
-          }
-          
-          return [...prev, currentNote];
-        }
-        return prev;
-      });
-    }
-    
-    setIsDragging(false);
-    setCurrentNote(null);
-    setDragStartX(null);
-  }, [activeTool, dragMode, isDragging, currentNote, setNotes, setIsDragging, setCurrentNote, setDragStartX, setLoopSettings]);
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    handleMouseMove(e, mouseHandlerProps);
+  };
+
+  const handleCanvasMouseUp = useCallback(() => {
+    handleMouseUp(mouseHandlerProps);
+  }, [
+    activeTool, 
+    dragMode, 
+    isDragging, 
+    currentNote, 
+    setNotes, 
+    setIsDragging, 
+    setCurrentNote, 
+    setDragStartX, 
+    setLoopSettings
+  ]);
 
   // Prevent context menu
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     return false;
   };
-
-  // Generate the rows
-  const pianoRollRows = Array.from({ length: 4 }, (_, i) => i);
-  
-  // Apply velocity from automation to notes when playing
-  useEffect(() => {
-    if (isPlaying) {
-      const velocityLane = automationLanes.find(lane => lane.type === 'velocity');
-      if (!velocityLane) return;
-      
-      // Schedule notes with velocity from automation
-      notes.forEach(note => {
-        if (note.startTime >= currentPosition && 
-            note.startTime < currentPosition + 1) {
-          // Get velocity at note start time
-          const velocity = getValueAtTime(velocityLane.id, note.startTime);
-          // Update note velocity
-          noteScheduler.updateNoteVelocity(note.id, Math.round(velocity));
-        }
-      });
-      
-      // Update tempo if needed
-      const tempoLane = automationLanes.find(lane => lane.type === 'tempo');
-      if (tempoLane) {
-        const tempo = getValueAtTime(tempoLane.id, currentPosition);
-        noteScheduler.setTempo(tempo);
-      }
-    }
-  }, [isPlaying, currentPosition, notes, automationLanes, getValueAtTime, noteScheduler]);
   
   return (
     <div className="piano-roll-container flex flex-col gap-2">
@@ -400,34 +157,36 @@ const PianoRoll: React.FC<PianoRollProps> = ({
         />
       </div>
       
-      {pianoRollRows.map((rowIndex) => (
-        <ScrollArea 
-          key={`piano-roll-row-${rowIndex}`} 
-          className="border border-zinc-700 rounded-md bg-zinc-900"
-        >
-          <div className="w-full h-[200px] overflow-auto">
-            <PianoRollCanvas
-              notes={notes}
-              isDragging={isDragging}
-              currentNote={currentNote}
-              dragMode={dragMode}
-              activeTool={activeTool}
-              currentPosition={currentPosition}
-              snapValue={snapValue}
-              loopSettings={loopSettings}
-              dragStartX={dragStartX}
-              zoom={zoom}
-              sheetMusicSettings={sheetMusicSettings}
-              rowIndex={rowIndex}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onContextMenu={handleContextMenu}
-            />
-          </div>
-        </ScrollArea>
-      ))}
+      {/* Piano Roll Rows */}
+      <PianoRollRows
+        notes={notes}
+        isDragging={isDragging}
+        currentNote={currentNote}
+        dragMode={dragMode}
+        activeTool={activeTool}
+        currentPosition={currentPosition}
+        snapValue={snapValue}
+        loopSettings={loopSettings}
+        dragStartX={dragStartX}
+        zoom={zoom}
+        sheetMusicSettings={sheetMusicSettings}
+        rowCount={4} // 4 rows like in the reference image
+        onMouseDown={handleCanvasMouseDown}
+        onMouseMove={handleCanvasMouseMove}
+        onMouseUp={handleCanvasMouseUp}
+        onMouseLeave={handleCanvasMouseUp}
+        onContextMenu={handleContextMenu}
+      />
+      
+      {/* Automation Integration (non-visual component) */}
+      <AutomationIntegration
+        isPlaying={isPlaying}
+        currentPosition={currentPosition}
+        notes={notes}
+        automationLanes={automationLanes}
+        getValueAtTime={getValueAtTime}
+        noteScheduler={noteScheduler}
+      />
       
       {/* Add automation panel */}
       <AutomationPanel
