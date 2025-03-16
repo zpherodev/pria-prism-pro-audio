@@ -132,6 +132,11 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     setLoopSettings
   ]);
 
+  // Handle imported MIDI notes
+  const handleNotesImported = (importedNotes: Note[]) => {
+    setNotes(importedNotes);
+  };
+
   // Prevent context menu
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -154,6 +159,8 @@ const PianoRoll: React.FC<PianoRollProps> = ({
           loopEnabled={loopSettings.enabled}
           toggleLoopMode={toggleLoopMode}
           clearAllNotes={clearAllNotes}
+          notes={notes}
+          onNotesImported={handleNotesImported}
         />
       </div>
       
