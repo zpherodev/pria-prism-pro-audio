@@ -1,15 +1,6 @@
 
-/**
- * Utility functions for persisting piano roll notes in local storage
- */
-
-export interface StorableNote {
-  id: string;
-  key: number;
-  startTime: number;
-  duration: number;
-  velocity: number;
-}
+import { Note } from '@/types/pianoRoll';
+import { AutomationLane } from '@/types/automation';
 
 export interface LoopSettings {
   enabled: boolean;
@@ -17,42 +8,35 @@ export interface LoopSettings {
   endTime: number;
 }
 
-export const saveNotesToLocalStorage = (notes: StorableNote[]): void => {
-  try {
-    localStorage.setItem('pianoRollNotes', JSON.stringify(notes));
-  } catch (error) {
-    console.error('Failed to save notes to local storage:', error);
-  }
+// Save notes to local storage
+export const saveNotesToLocalStorage = (notes: Note[]): void => {
+  localStorage.setItem('piano-roll-notes', JSON.stringify(notes));
 };
 
-export const loadNotesFromLocalStorage = (): StorableNote[] => {
-  try {
-    const notesJson = localStorage.getItem('pianoRollNotes');
-    if (!notesJson) return [];
-    
-    return JSON.parse(notesJson) as StorableNote[];
-  } catch (error) {
-    console.error('Failed to load notes from local storage:', error);
-    return [];
-  }
+// Load notes from local storage
+export const loadNotesFromLocalStorage = (): Note[] => {
+  const notesJson = localStorage.getItem('piano-roll-notes');
+  return notesJson ? JSON.parse(notesJson) : [];
 };
 
+// Save loop settings to local storage
 export const saveLoopSettingsToLocalStorage = (settings: LoopSettings): void => {
-  try {
-    localStorage.setItem('pianoRollLoopSettings', JSON.stringify(settings));
-  } catch (error) {
-    console.error('Failed to save loop settings to local storage:', error);
-  }
+  localStorage.setItem('piano-roll-loop-settings', JSON.stringify(settings));
 };
 
+// Load loop settings from local storage
 export const loadLoopSettingsFromLocalStorage = (): LoopSettings | null => {
-  try {
-    const settingsJson = localStorage.getItem('pianoRollLoopSettings');
-    if (!settingsJson) return null;
-    
-    return JSON.parse(settingsJson) as LoopSettings;
-  } catch (error) {
-    console.error('Failed to load loop settings from local storage:', error);
-    return null;
-  }
+  const settingsJson = localStorage.getItem('piano-roll-loop-settings');
+  return settingsJson ? JSON.parse(settingsJson) : null;
+};
+
+// Save automation lanes to local storage
+export const saveAutomationLanesToLocalStorage = (lanes: AutomationLane[]): void => {
+  localStorage.setItem('piano-roll-automation-lanes', JSON.stringify(lanes));
+};
+
+// Load automation lanes from local storage
+export const loadAutomationLanesFromLocalStorage = (): AutomationLane[] => {
+  const lanesJson = localStorage.getItem('piano-roll-automation-lanes');
+  return lanesJson ? JSON.parse(lanesJson) : [];
 };

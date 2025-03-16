@@ -1,7 +1,12 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Note, SnapValue, ToolType, DragMode } from '@/types/pianoRoll';
-import { LoopSettings, saveNotesToLocalStorage, loadNotesFromLocalStorage, saveLoopSettingsToLocalStorage, loadLoopSettingsFromLocalStorage } from '@/utils/persistenceUtils';
+import { 
+  LoopSettings, 
+  saveNotesToLocalStorage, 
+  loadNotesFromLocalStorage, 
+  saveLoopSettingsToLocalStorage, 
+  loadLoopSettingsFromLocalStorage
+} from '@/utils/persistenceUtils';
 import { NoteScheduler } from '@/utils/audioSynthesis';
 import { getSnapValueInSeconds, snapTimeToGrid } from '@/utils/pianoRollUtils';
 
@@ -24,7 +29,6 @@ export const usePianoRollState = (duration: number) => {
   });
   const [dragStartX, setDragStartX] = useState<number | null>(null);
   
-  // Load saved notes and loop settings
   useEffect(() => {
     const savedNotes = loadNotesFromLocalStorage();
     if (savedNotes.length > 0) {
@@ -37,17 +41,14 @@ export const usePianoRollState = (duration: number) => {
     }
   }, []);
   
-  // Save notes when they change
   useEffect(() => {
     saveNotesToLocalStorage(notes);
   }, [notes]);
   
-  // Save loop settings when they change
   useEffect(() => {
     saveLoopSettingsToLocalStorage(loopSettings);
   }, [loopSettings]);
   
-  // Toggle playback
   const togglePlayback = useCallback(() => {
     if (isPlaying) {
       noteScheduler.stopPlayback();
@@ -76,8 +77,7 @@ export const usePianoRollState = (duration: number) => {
       }
     }
   }, [isPlaying, currentPosition, noteScheduler, loopSettings]);
-
-  // Reset playback position
+  
   const resetPlayback = useCallback(() => {
     if (isPlaying) {
       togglePlayback();
@@ -85,15 +85,13 @@ export const usePianoRollState = (duration: number) => {
     setCurrentPosition(0);
     noteScheduler.setPosition(0);
   }, [isPlaying, togglePlayback, noteScheduler]);
-
-  // Preview a note
+  
   const playNotePreview = useCallback((midiNote: number) => {
     const noteId = `preview-${midiNote}`;
     noteScheduler.playNote(noteId, midiNote);
     setTimeout(() => noteScheduler.stopNote(noteId), 500);
   }, [noteScheduler]);
-
-  // Schedule notes for playback
+  
   useEffect(() => {
     if (isPlaying) {
       const now = Date.now();
@@ -104,8 +102,7 @@ export const usePianoRollState = (duration: number) => {
       setLastFrameTime(now);
     }
   }, [isPlaying, currentPosition, notes, noteScheduler, lastFrameTime]);
-
-  // Cleanup on unmount
+  
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) {
@@ -114,22 +111,18 @@ export const usePianoRollState = (duration: number) => {
       noteScheduler.stopPlayback();
     };
   }, [noteScheduler]);
-
-  // Toggle loop mode
+  
   const toggleLoopMode = useCallback(() => {
     setLoopSettings(prev => ({ ...prev, enabled: !prev.enabled }));
   }, []);
-
-  // Clear all notes
+  
   const clearAllNotes = useCallback(() => {
     setNotes([]);
     saveNotesToLocalStorage([]);
   }, []);
-
-  // Keyboard shortcuts
+  
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Spacebar to toggle play/pause
       if (e.code === 'Space' && !e.repeat && !e.target) {
         e.preventDefault();
         togglePlayback();
@@ -142,7 +135,7 @@ export const usePianoRollState = (duration: number) => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [togglePlayback]);
-
+  
   return {
     notes,
     setNotes,

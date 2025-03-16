@@ -1,9 +1,12 @@
+
 import React, { useCallback, useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PianoRollToolbar } from './pianoroll/PianoRollToolbar';
 import { PianoRollCanvas } from './pianoroll/PianoRollCanvas';
 import { usePianoRollState } from '@/hooks/usePianoRollState';
+import { useAutomationState } from '@/hooks/useAutomationState';
 import { Note, SheetMusicSettings } from '@/types/pianoRoll';
+import { AutomationPanel } from './automation/AutomationPanel';
 import { Button } from "@/components/ui/button";
 
 interface PianoRollProps {
@@ -51,6 +54,13 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     getSnapValueInSeconds,
     snapTimeToGrid
   } = usePianoRollState(duration);
+  
+  // Add automation state
+  const {
+    automationLanes,
+    setAutomationLanes,
+    getValueAtTime
+  } = useAutomationState(duration);
 
   // Smaller key dimensions for better responsiveness
   const keyWidth = 40; // Reduced from 60
@@ -345,6 +355,32 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   // Generate the rows
   const pianoRollRows = Array.from({ length: 4 }, (_, i) => i);
   
+  // Apply velocity from automation to notes when playing
+  useEffect(() => {
+    if (isPlaying) {
+      const velocityLane = automationLanes.find(lane => lane.type === 'velocity');
+      if (!velocityLane) return;
+      
+      // Schedule notes with velocity from automation
+      notes.forEach(note => {
+        if (note.startTime >= currentPosition && 
+            note.startTime < currentPosition + 1) {
+          // Get velocity at note start time
+          const velocity = getValueAtTime(velocityLane.id, note.startTime);
+          // Update note velocity
+          noteScheduler.updateNoteVelocity(note.id, Math.round(velocity));
+        }
+      });
+      
+      // Update tempo if needed
+      const tempoLane = automationLanes.find(lane => lane.type === 'tempo');
+      if (tempoLane) {
+        const tempo = getValueAtTime(tempoLane.id, currentPosition);
+        noteScheduler.setTempo(tempo);
+      }
+    }
+  }, [isPlaying, currentPosition, notes, automationLanes, getValueAtTime, noteScheduler]);
+  
   return (
     <div className="piano-roll-container flex flex-col gap-2">
       <div className="flex justify-between items-center">
@@ -392,6 +428,16 @@ const PianoRoll: React.FC<PianoRollProps> = ({
           </div>
         </ScrollArea>
       ))}
+      
+      {/* Add automation panel */}
+      <AutomationPanel
+        lanes={automationLanes}
+        onLanesChange={setAutomationLanes}
+        zoom={zoom}
+        duration={duration}
+        currentPosition={currentPosition}
+        snapValue={snapValue}
+      />
     </div>
   );
 };

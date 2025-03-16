@@ -1,4 +1,3 @@
-
 /**
  * Simple audio synthesis utility for piano roll playback
  */
@@ -75,12 +74,13 @@ export const playNote = (
 // Playback scheduler for piano roll
 export class NoteScheduler {
   private audioContext: AudioContext;
-  private activeNotes: Map<string, { oscillator: OscillatorNode; gain: GainNode; endTime: number }>;
+  private activeNotes: Map<string, { oscillator: OscillatorNode; gain: GainNode; endTime: number; velocity: number }>;
   private isPlaying: boolean = false;
   private startTime: number = 0;
   private currentPosition: number = 0;
   private playbackSpeed: number = 1.0;
   private cleanupInterval: number | null = null;
+  private tempo: number = 120;
 
   constructor() {
     this.audioContext = new AudioContext();
@@ -150,12 +150,24 @@ export class NoteScheduler {
     
     oscillator.start();
     const endTime = this.audioContext.currentTime + duration;
-    this.activeNotes.set(noteId, { oscillator, gain: gainNode, endTime });
+    this.activeNotes.set(noteId, { oscillator, gain: gainNode, endTime, velocity });
     
     // Automatically schedule note to stop
     gainNode.gain.setValueAtTime(gainNode.gain.value, endTime - 0.1);
     gainNode.gain.linearRampToValueAtTime(0, endTime);
     oscillator.stop(endTime + 0.1);
+  }
+
+  public updateNoteVelocity(noteId: string, velocity: number): void {
+    const note = this.activeNotes.get(noteId);
+    if (!note) return;
+    
+    const newGain = (velocity / 127) * 0.7; // Scale velocity to gain
+    const currentTime = this.audioContext.currentTime;
+    
+    note.velocity = velocity;
+    note.gain.gain.setValueAtTime(note.gain.gain.value, currentTime);
+    note.gain.gain.linearRampToValueAtTime(newGain, currentTime + 0.05);
   }
 
   public stopNote(noteId: string): void {
@@ -192,6 +204,22 @@ export class NoteScheduler {
     if (this.isPlaying) {
       this.startTime = this.audioContext.currentTime;
     }
+  }
+
+  public setTempo(bpm: number): void {
+    const newTempo = Math.max(40, Math.min(240, bpm));
+    const tempoRatio = newTempo / this.tempo;
+    
+    if (this.isPlaying) {
+      // Adjust playback speed proportionally to tempo change
+      this.playbackSpeed = this.playbackSpeed * tempoRatio;
+      
+      // Update current position before changing tempo
+      this.currentPosition = this.currentTime;
+      this.startTime = this.audioContext.currentTime;
+    }
+    
+    this.tempo = newTempo;
   }
 
   public setPlaybackSpeed(speed: number): void {
