@@ -1,5 +1,5 @@
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PianoRollToolbar } from './pianoroll/PianoRollToolbar';
 import { PianoRollCanvas } from './pianoroll/PianoRollCanvas';
