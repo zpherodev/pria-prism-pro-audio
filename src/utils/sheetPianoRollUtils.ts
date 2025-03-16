@@ -142,10 +142,13 @@ export const renderSheetPianoRoll = (
     }
   }
   
-  // Draw piano keys for this row
+  // Fixed octave range for all rows (C3-B4, which is MIDI notes 60-83)
+  const startOctaveNote = 60; // C3
+  
+  // Draw piano keys for this row - IMPORTANT CHANGE: Use same octave range for all rows
   for (let i = 0; i < keysPerRow; i++) {
     const keyIndex = keysPerRow - i - 1; // Reverse to match piano layout
-    const midiNote = (rowIndex * keysPerRow) + keyIndex + lowestKey;
+    const midiNote = startOctaveNote + i;
     const isBlackKey = [1, 3, 6, 8, 10].includes(midiNote % 12);
     const y = i * keyHeight + 20; // +20 for time markers
     
@@ -240,12 +243,17 @@ export const renderSheetPianoRoll = (
     }
   }
   
-  // ------------------- Filter and draw notes that belong to this row -------------------
+  // ------------------- Filter and draw notes that belong to this row and are in the correct octave range -------------------
   const rowNotes = notes.filter(note => {
     // Check if the note starts or ends in this row's time range
-    return (note.startTime >= rowStartTime && note.startTime < rowEndTime) ||
-           (note.startTime + note.duration > rowStartTime && note.startTime + note.duration <= rowEndTime) ||
-           (note.startTime <= rowStartTime && note.startTime + note.duration >= rowEndTime);
+    const timeInRange = (note.startTime >= rowStartTime && note.startTime < rowEndTime) ||
+                       (note.startTime + note.duration > rowStartTime && note.startTime + note.duration <= rowEndTime) ||
+                       (note.startTime <= rowStartTime && note.startTime + note.duration >= rowEndTime);
+    
+    // Check if the note is in our fixed octave range (C3-B4, MIDI 60-83)
+    const inOctaveRange = note.key >= startOctaveNote && note.key < startOctaveNote + keysPerRow;
+    
+    return timeInRange && inOctaveRange;
   });
   
   rowNotes.forEach(note => {
@@ -265,16 +273,8 @@ export const renderSheetPianoRoll = (
     
     const width = endX - startX;
     
-    // Calculate which key in the row this note belongs to
-    const midiNoteOffset = note.key - lowestKey;
-    const rowOffset = Math.floor(midiNoteOffset / keysPerRow);
-    
-    // Skip if not in current row range
-    if (rowIndex !== rowOffset) {
-      return;
-    }
-    
-    const keyOffsetInRow = midiNoteOffset % keysPerRow;
+    // Calculate key position in the fixed octave range
+    const keyOffsetInRow = note.key - startOctaveNote;
     
     // Position in row - inverting to match piano layout (higher notes at top)
     const y = (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20; // +20 for time markers
@@ -314,11 +314,11 @@ export const renderSheetPianoRoll = (
                           (currentNote.startTime + currentNote.duration > rowStartTime && 
                            currentNote.startTime + currentNote.duration <= rowEndTime);
                           
-    const midiNoteOffset = currentNote.key - lowestKey;
-    const rowOffset = Math.floor(midiNoteOffset / keysPerRow);
+    // Check if the note is in our fixed octave range
+    const inOctaveRange = currentNote.key >= startOctaveNote && currentNote.key < startOctaveNote + keysPerRow;
     
     // Only draw current note if it belongs to this row in both time and key range
-    if (noteInRowRange && rowIndex === rowOffset) {
+    if (noteInRowRange && inOctaveRange) {
       let startX = keyWidth;
       let endX = keyWidth + rowWidth;
       
@@ -333,7 +333,7 @@ export const renderSheetPianoRoll = (
       }
       
       const width = endX - startX;
-      const keyOffsetInRow = midiNoteOffset % keysPerRow;
+      const keyOffsetInRow = currentNote.key - startOctaveNote;
       
       // Position in row
       const y = (keysPerRow - keyOffsetInRow - 1) * keyHeight + 20; // +20 for time markers

@@ -1,3 +1,4 @@
+
 import { Note, SnapValue, DragMode, ToolType } from '@/types/pianoRoll';
 import { LoopSettings } from '@/utils/persistenceUtils';
 
@@ -38,6 +39,9 @@ export const handleMouseDown = (
   // Get the row index from the canvas data attribute
   const rowIndex = parseInt(canvas.getAttribute('data-row-index') || '0', 10);
   
+  // Fixed start octave note (C3 = MIDI 60)
+  const startOctaveNote = 60;
+  
   // Handle right-click to erase notes
   if (e.button === 2) {
     e.preventDefault(); // Prevent context menu
@@ -56,19 +60,27 @@ export const handleMouseDown = (
     
     // Find and remove the note under the cursor
     props.setNotes(prevNotes => prevNotes.filter(note => {
-      const midiNoteOffset = note.key - props.lowestKey;
-      const noteRowIndex = Math.floor(midiNoteOffset / props.keysPerRow);
+      // Check if note is in this row's time range
+      const noteStartsInRow = note.startTime >= rowStartTime && note.startTime < rowStartTime + secondsPerRow;
+      const noteEndsInRow = note.startTime + note.duration > rowStartTime && 
+                            note.startTime + note.duration <= rowStartTime + secondsPerRow;
+      const noteSpansRow = note.startTime < rowStartTime && note.startTime + note.duration > rowStartTime + secondsPerRow;
       
-      // Skip if note isn't in this row
-      if (noteRowIndex !== rowIndex) return true;
+      if (!noteStartsInRow && !noteEndsInRow && !noteSpansRow) return true;
       
-      const keyOffsetInRow = midiNoteOffset % props.keysPerRow;
+      // Check if note is in the fixed octave range
+      if (note.key < startOctaveNote || note.key >= startOctaveNote + props.keysPerRow) return true;
+      
+      // Calculate key position
+      const keyOffsetInRow = note.key - startOctaveNote;
       const noteY = (props.keysPerRow - keyOffsetInRow - 1) * props.keyHeight + 20;
       
       // Calculate note position in this row
-      const noteStartInRow = note.startTime - rowStartTime;
+      const noteStartInRow = Math.max(0, note.startTime - rowStartTime);
       const noteX = props.keyWidth + (noteStartInRow / secondsPerBeat) * (props.zoom * 40);
-      const noteWidth = note.duration / secondsPerBeat * (props.zoom * 40);
+      const noteEndInRow = Math.min(secondsPerRow, note.startTime + note.duration - rowStartTime);
+      const noteDurationInRow = noteEndInRow - noteStartInRow;
+      const noteWidth = noteDurationInRow / secondsPerBeat * (props.zoom * 40);
       
       return !(
         x >= noteX && x <= noteX + noteWidth &&
@@ -84,9 +96,10 @@ export const handleMouseDown = (
   const y = e.clientY - rect.top;
   
   if (x <= props.keyWidth) {
-    // Calculate the correct MIDI note based on the row and position
+    // Fixed start octave note (C3 = MIDI 60)
+    // Calculate the correct MIDI note based on the key index in the fixed octave range
     const keyIndex = Math.floor((y - 20) / props.keyHeight);
-    const midiNote = props.lowestKey + (rowIndex * props.keysPerRow) + (props.keysPerRow - keyIndex - 1);
+    const midiNote = startOctaveNote + (props.keysPerRow - keyIndex - 1);
     props.playNotePreview(midiNote);
     return;
   }
@@ -101,9 +114,9 @@ export const handleMouseDown = (
   const time = rowStartTime + timeInRow;
   const snappedTime = props.snapTimeToGrid(time);
   
-  // Calculate the correct MIDI note based on the row and position
+  // Calculate the correct MIDI note based on the key index in the fixed octave range
   const keyIndex = Math.floor((y - 20) / props.keyHeight);
-  const midiNote = props.lowestKey + (rowIndex * props.keysPerRow) + (props.keysPerRow - keyIndex - 1);
+  const midiNote = startOctaveNote + (props.keysPerRow - keyIndex - 1);
   
   // Handle loop tool
   if (props.loopSettings.enabled || props.activeTool === 'loop') {
@@ -140,21 +153,29 @@ export const handleMouseDown = (
     
     props.setNotes(prev => [...prev, newNote]);
   } else if (props.activeTool === 'select') {
-    // Find notes in the current row
+    // Find notes in the current row's time and octave range
     for (const note of props.notes) {
-      const midiNoteOffset = note.key - props.lowestKey;
-      const noteRowIndex = Math.floor(midiNoteOffset / props.keysPerRow);
+      // Check if note is in this row's time range
+      const noteStartsInRow = note.startTime >= rowStartTime && note.startTime < rowStartTime + secondsPerRow;
+      const noteEndsInRow = note.startTime + note.duration > rowStartTime && 
+                           note.startTime + note.duration <= rowStartTime + secondsPerRow;
+      const noteSpansRow = note.startTime < rowStartTime && note.startTime + note.duration > rowStartTime + secondsPerRow;
       
-      // Skip if note isn't in this row
-      if (noteRowIndex !== rowIndex) continue;
+      if (!noteStartsInRow && !noteEndsInRow && !noteSpansRow) continue;
       
-      const keyOffsetInRow = midiNoteOffset % props.keysPerRow;
+      // Check if note is in the fixed octave range
+      if (note.key < startOctaveNote || note.key >= startOctaveNote + props.keysPerRow) continue;
+      
+      // Calculate key position
+      const keyOffsetInRow = note.key - startOctaveNote;
       const noteY = (props.keysPerRow - keyOffsetInRow - 1) * props.keyHeight + 20;
       
       // Calculate note position in this row
-      const noteStartInRow = note.startTime - rowStartTime;
+      const noteStartInRow = Math.max(0, note.startTime - rowStartTime);
       const noteX = props.keyWidth + (noteStartInRow / secondsPerBeat) * (props.zoom * 40);
-      const noteWidth = note.duration / secondsPerBeat * (props.zoom * 40);
+      const noteEndInRow = Math.min(secondsPerRow, note.startTime + note.duration - rowStartTime);
+      const noteDurationInRow = noteEndInRow - noteStartInRow;
+      const noteWidth = noteDurationInRow / secondsPerBeat * (props.zoom * 40);
       
       if (
         x >= noteX && x <= noteX + noteWidth &&
@@ -176,21 +197,29 @@ export const handleMouseDown = (
         break;
       }
     }
-  } else if (props.activeTool === 'erase') {
+  } else if (props.activeTool === 'eraser') {
     props.setNotes(prevNotes => prevNotes.filter(note => {
-      const midiNoteOffset = note.key - props.lowestKey;
-      const noteRowIndex = Math.floor(midiNoteOffset / props.keysPerRow);
+      // Check if note is in this row's time range
+      const noteStartsInRow = note.startTime >= rowStartTime && note.startTime < rowStartTime + secondsPerRow;
+      const noteEndsInRow = note.startTime + note.duration > rowStartTime && 
+                           note.startTime + note.duration <= rowStartTime + secondsPerRow;
+      const noteSpansRow = note.startTime < rowStartTime && note.startTime + note.duration > rowStartTime + secondsPerRow;
       
-      // Skip if note isn't in this row
-      if (noteRowIndex !== rowIndex) return true;
+      if (!noteStartsInRow && !noteEndsInRow && !noteSpansRow) return true;
       
-      const keyOffsetInRow = midiNoteOffset % props.keysPerRow;
+      // Check if note is in the fixed octave range
+      if (note.key < startOctaveNote || note.key >= startOctaveNote + props.keysPerRow) return true;
+      
+      // Calculate key position
+      const keyOffsetInRow = note.key - startOctaveNote;
       const noteY = (props.keysPerRow - keyOffsetInRow - 1) * props.keyHeight + 20;
       
       // Calculate note position in this row
-      const noteStartInRow = note.startTime - rowStartTime;
+      const noteStartInRow = Math.max(0, note.startTime - rowStartTime);
       const noteX = props.keyWidth + (noteStartInRow / secondsPerBeat) * (props.zoom * 40);
-      const noteWidth = note.duration / secondsPerBeat * (props.zoom * 40);
+      const noteEndInRow = Math.min(secondsPerRow, note.startTime + note.duration - rowStartTime);
+      const noteDurationInRow = noteEndInRow - noteStartInRow;
+      const noteWidth = noteDurationInRow / secondsPerBeat * (props.zoom * 40);
       
       return !(
         x >= noteX && x <= noteX + noteWidth &&
