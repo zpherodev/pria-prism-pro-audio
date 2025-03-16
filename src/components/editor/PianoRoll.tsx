@@ -3,9 +3,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { PianoRollToolbar } from './pianoroll/PianoRollToolbar';
 import { PianoRollCanvas } from './pianoroll/PianoRollCanvas';
 import { usePianoRollState } from '@/hooks/usePianoRollState';
-import { Note, PianoRollLayoutType, SheetMusicSettings } from '@/types/pianoRoll';
+import { Note, SheetMusicSettings } from '@/types/pianoRoll';
 import { Button } from "@/components/ui/button";
-import { Grid, Rows3 } from 'lucide-react';
 
 interface PianoRollProps {
   duration: number;
@@ -18,7 +17,6 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   zoom,
   onZoomChange 
 }) => {
-  const [layoutType, setLayoutType] = useState<PianoRollLayoutType>('sheet-music');
   const [sheetMusicSettings, setSheetMusicSettings] = useState<SheetMusicSettings>({
     beatsPerMeasure: 4,
     measuresPerRow: 8, // Show 8 measures per row
@@ -69,12 +67,6 @@ const PianoRoll: React.FC<PianoRollProps> = ({
   const handleZoomOut = () => {
     const newZoom = Math.max(zoom / 1.5, 0.1);
     if (onZoomChange) onZoomChange(newZoom);
-  };
-  
-  const toggleLayout = () => {
-    setLayoutType(prevLayout => 
-      prevLayout === 'traditional' ? 'sheet-music' : 'traditional'
-    );
   };
 
   // Fixed the math issue with cursor position
@@ -370,17 +362,6 @@ const PianoRoll: React.FC<PianoRollProps> = ({
           toggleLoopMode={toggleLoopMode}
           clearAllNotes={clearAllNotes}
         />
-        
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={toggleLayout}
-          className="flex items-center gap-1"
-        >
-          {layoutType === 'traditional' 
-            ? <><Rows3 className="h-4 w-4" /> Sheet Music</> 
-            : <><Grid className="h-4 w-4" /> Traditional</>}
-        </Button>
       </div>
       
       {pianoRollRows.map((rowIndex) => (
@@ -400,7 +381,6 @@ const PianoRoll: React.FC<PianoRollProps> = ({
               loopSettings={loopSettings}
               dragStartX={dragStartX}
               zoom={zoom}
-              layoutType={layoutType}
               sheetMusicSettings={sheetMusicSettings}
               rowIndex={rowIndex}
               onMouseDown={handleMouseDown}

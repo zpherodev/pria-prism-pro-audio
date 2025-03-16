@@ -1,8 +1,7 @@
 
 import React, { useRef, useEffect } from 'react';
-import { Note, SnapValue, ToolType, DragMode, PianoRollLayoutType, SheetMusicSettings } from '@/types/pianoRoll';
+import { Note, SnapValue, ToolType, DragMode, SheetMusicSettings } from '@/types/pianoRoll';
 import { LoopSettings } from '@/utils/persistenceUtils';
-import { renderPianoRoll } from '@/utils/pianoRollUtils';
 import { renderSheetPianoRoll } from '@/utils/sheetPianoRollUtils';
 
 interface PianoRollCanvasProps {
@@ -16,7 +15,6 @@ interface PianoRollCanvasProps {
   loopSettings: LoopSettings;
   dragStartX: number | null;
   zoom: number;
-  layoutType: PianoRollLayoutType;
   sheetMusicSettings: SheetMusicSettings;
   rowIndex?: number; // Added rowIndex for multi-row support
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
@@ -37,7 +35,6 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
   loopSettings,
   dragStartX,
   zoom,
-  layoutType,
   sheetMusicSettings,
   rowIndex = 0, // Default to first row if not specified
   onMouseDown,
@@ -55,48 +52,29 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    if (layoutType === 'traditional') {
-      canvas.width = Math.max(canvas.width, 800);
-      
-      renderPianoRoll(
-        ctx,
-        canvas,
-        notes,
-        currentPosition,
-        zoom,
-        loopSettings,
-        activeTool,
-        isDragging,
-        currentNote,
-        dragStartX,
-        dragMode,
-        snapValue
-      );
-    } else {
-      // Sheet music style layout with improved spacing
-      renderSheetPianoRoll(
-        ctx,
-        canvas,
-        notes,
-        currentPosition,
-        zoom,
-        loopSettings,
-        activeTool,
-        isDragging,
-        currentNote,
-        dragStartX,
-        dragMode,
-        snapValue,
-        {
-          beatsPerMeasure: sheetMusicSettings.beatsPerMeasure,
-          measuresPerRow: sheetMusicSettings.measuresPerRow,
-          totalRows: 1, // Always render just 1 row per canvas
-          pixelsPerBeat: 40 * zoom, // Reduced from 50 to make keys smaller
-          rowSpacing: 20, // Reduced spacing between rows
-          rowIndex: rowIndex // Pass the row index to render the correct segment
-        }
-      );
-    }
+    // Sheet music style layout with improved spacing
+    renderSheetPianoRoll(
+      ctx,
+      canvas,
+      notes,
+      currentPosition,
+      zoom,
+      loopSettings,
+      activeTool,
+      isDragging,
+      currentNote,
+      dragStartX,
+      dragMode,
+      snapValue,
+      {
+        beatsPerMeasure: sheetMusicSettings.beatsPerMeasure,
+        measuresPerRow: sheetMusicSettings.measuresPerRow,
+        totalRows: 1, // Always render just 1 row per canvas
+        pixelsPerBeat: 40 * zoom, // Reduced from 50 to make keys smaller
+        rowSpacing: 20, // Reduced spacing between rows
+        rowIndex: rowIndex // Pass the row index to render the correct segment
+      }
+    );
   }, [
     zoom, 
     notes, 
@@ -108,7 +86,6 @@ export const PianoRollCanvas: React.FC<PianoRollCanvasProps> = ({
     dragStartX, 
     dragMode,
     snapValue,
-    layoutType,
     sheetMusicSettings,
     rowIndex
   ]);
