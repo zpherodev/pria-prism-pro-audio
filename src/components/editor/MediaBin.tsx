@@ -21,41 +21,44 @@ export const MediaBin = ({ onFileSelect, onLoadDefaultSounds, hasDefaultSounds }
     <div>
       <h3 className="text-lg font-medium mb-4">Audio Library</h3>
       
-      {/* Default sounds buttons */}
+      {/* Default sound mapping buttons */}
       {onLoadDefaultSounds && (
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <Button 
-            variant="outline" 
-            className="flex items-center justify-center" 
-            onClick={() => onLoadDefaultSounds('PIANO')}
-          >
-            <Piano className="mr-2 h-4 w-4" />
-            Piano
-          </Button>
-          <Button 
-            variant="outline" 
-            className="flex items-center justify-center" 
-            onClick={() => onLoadDefaultSounds('BASS')}
-          >
-            <Radio className="mr-2 h-4 w-4" />
-            Bass
-          </Button>
-          <Button 
-            variant="outline" 
-            className="flex items-center justify-center" 
-            onClick={() => onLoadDefaultSounds('DRUMS')}
-          >
-            <Drumstick className="mr-2 h-4 w-4" />
-            Drums
-          </Button>
-          <Button 
-            variant="outline" 
-            className="flex items-center justify-center" 
-            onClick={() => onLoadDefaultSounds('GUITAR')}
-          >
-            <Guitar className="mr-2 h-4 w-4" />
-            Guitar
-          </Button>
+        <div>
+          <h4 className="text-sm font-medium mb-2">Map Sound To Instrument:</h4>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <Button 
+              variant="outline" 
+              className="flex items-center justify-center" 
+              onClick={() => onLoadDefaultSounds('PIANO')}
+            >
+              <Piano className="mr-2 h-4 w-4" />
+              Piano (C4)
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex items-center justify-center" 
+              onClick={() => onLoadDefaultSounds('BASS')}
+            >
+              <Radio className="mr-2 h-4 w-4" />
+              Bass (C2)
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex items-center justify-center" 
+              onClick={() => onLoadDefaultSounds('DRUMS')}
+            >
+              <Drumstick className="mr-2 h-4 w-4" />
+              Drums (Kick)
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex items-center justify-center" 
+              onClick={() => onLoadDefaultSounds('GUITAR')}
+            >
+              <Guitar className="mr-2 h-4 w-4" />
+              Guitar (C3)
+            </Button>
+          </div>
         </div>
       )}
       
@@ -70,7 +73,10 @@ export const MediaBin = ({ onFileSelect, onLoadDefaultSounds, hasDefaultSounds }
         <label htmlFor="file-upload" className="cursor-pointer">
           <AudioLines className="mx-auto h-12 w-12 text-editor-text-secondary mb-2" />
           <p className="text-sm text-editor-text-secondary">
-            Drag & drop audio files or click to upload
+            Upload your own sounds (.wav, .mp3, etc.)
+          </p>
+          <p className="text-xs text-editor-text-secondary mt-1">
+            Drag & drop or click to browse files
           </p>
         </label>
       </div>

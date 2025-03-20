@@ -1,30 +1,28 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { MidiMappedSound } from '@/types/pianoRoll';
 import { toast } from 'sonner';
 
-// Define the default instrument mappings
-//hotlinking from another site is bad mk
+// Define the default instrument mappings without URLs
 const DEFAULT_INSTRUMENTS = {
   PIANO: {
     name: 'Piano',
     baseMidiNote: 60, // Middle C (C4)
-    url: '' // Piano C4 sample
+    url: '' // We'll use uploaded samples instead
   },
   BASS: {
     name: 'Bass',
     baseMidiNote: 36, // C2
-    url: '' // Bass C2 sample
+    url: '' // We'll use uploaded samples instead
   },
   DRUMS: {
     name: 'Drums (Kick)',
     baseMidiNote: 36, // Standard MIDI mapping for kick drum
-    url: '' // Kick drum sample
+    url: '' // We'll use uploaded samples instead
   },
   GUITAR: {
     name: 'Guitar',
     baseMidiNote: 48, // C3
-    url: '' // Guitar C3 sample
+    url: '' // We'll use uploaded samples instead
   }
 };
 
@@ -78,32 +76,13 @@ export const useMidiMapping = () => {
       return;
     }
     
-    toast.info(`Loading ${instrument.name} sound...`);
+    toast.info(`Please upload a ${instrument.name} sound file`);
     
-    try {
-      const response = await fetch(instrument.url);
-      const arrayBuffer = await response.arrayBuffer();
-      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
-      
-      const newSound = {
-        midiNote: instrument.baseMidiNote,
-        audioBuffer,
-        filePath: instrument.url,
-        fileName: `${instrument.name}.mp3`
-      } as MidiMappedSound;
-      
-      setMappedSounds(prev => {
-        // Remove any existing mapping for this note
-        const filtered = prev.filter(sound => sound.midiNote !== newSound.midiNote);
-        return [...filtered, newSound];
-      });
-      
-      toast.success(`Loaded ${instrument.name} sound`);
-      setDefaultSoundsLoaded(true);
-    } catch (error) {
-      console.error(`Failed to load ${instrument.name} sample:`, error);
-      toast.error(`Failed to load ${instrument.name} sound`);
-    }
+    // Instead of trying to fetch from a URL, we'll notify the user to upload a sample
+    // The actual mapping will happen when they upload and map the sound
+    
+    // We're keeping the structure but not fetching remote URLs
+    setDefaultSoundsLoaded(true);
   }, []);
 
   // Map a sound file to a MIDI note
