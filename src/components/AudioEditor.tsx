@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { MediaBin } from './editor/MediaBin';
 import { Timeline } from './editor/Timeline';
@@ -28,7 +29,8 @@ export const AudioEditor = () => {
     mapSoundToNote,
     playMappedSound,
     stopAllSounds,
-    playNoteFromPianoRoll
+    playNoteFromPianoRoll,
+    loadDefaultSounds
   } = useMidiMapping();
   
   // Piano roll note playback handler
@@ -44,6 +46,12 @@ export const AudioEditor = () => {
   // Handle audio buffer loaded from file
   const handleAudioBufferLoaded = (buffer: AudioBuffer) => {
     setAudioBuffer(buffer);
+  };
+
+  // Handle file selection in the MediaBin
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file);
+    setAudioBuffer(null); // Reset audio buffer when file changes
   };
 
   // Calculate panel widths based on collapse state
@@ -77,11 +85,11 @@ export const AudioEditor = () => {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
               </div>
-              <MediaBin onFileSelect={file => {
-                setSelectedFile(file);
-                // Reset audio buffer when file changes
-                setAudioBuffer(null);
-              }} />
+              <MediaBin 
+                onFileSelect={handleFileSelect} 
+                onLoadDefaultSounds={loadDefaultSounds}
+                hasDefaultSounds={mappedSounds.length > 0}
+              />
             </>
           )}
         </div>
@@ -131,7 +139,7 @@ export const AudioEditor = () => {
                     <h3 className="text-sm font-medium mb-2">Mapped Sounds</h3>
                     {mappedSounds.length === 0 ? (
                       <div className="text-sm text-zinc-500 text-center p-4 border border-dashed border-zinc-700 rounded-md">
-                        No sounds mapped yet. Drag audio files onto piano keys.
+                        No sounds mapped yet. Drag audio files onto piano keys or use the "Load Default Sounds" button.
                       </div>
                     ) : (
                       <div className="space-y-2 max-h-40 overflow-y-auto">

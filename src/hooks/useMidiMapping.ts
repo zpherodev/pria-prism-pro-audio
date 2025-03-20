@@ -1,11 +1,37 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { MidiMappedSound } from '@/types/pianoRoll';
+import { toast } from 'sonner';
+
+// Define the default instrument mappings
+const DEFAULT_INSTRUMENTS = {
+  PIANO: {
+    name: 'Piano',
+    baseMidiNote: 60, // Middle C (C4)
+    url: 'https://freesound.org/data/previews/319/319253_5404962-lq.mp3' // Piano C4 sample
+  },
+  BASS: {
+    name: 'Bass',
+    baseMidiNote: 36, // C2
+    url: 'https://freesound.org/data/previews/371/371580_6891766-lq.mp3' // Bass C2 sample
+  },
+  DRUMS: {
+    name: 'Drums (Kick)',
+    baseMidiNote: 36, // Standard MIDI mapping for kick drum
+    url: 'https://freesound.org/data/previews/416/416044_6657174-lq.mp3' // Kick drum sample
+  },
+  GUITAR: {
+    name: 'Guitar',
+    baseMidiNote: 48, // C3
+    url: 'https://freesound.org/data/previews/168/168823_85468-lq.mp3' // Guitar C3 sample
+  }
+};
 
 export const useMidiMapping = () => {
   const [mappedSounds, setMappedSounds] = useState<MidiMappedSound[]>([]);
   const [startOctave, setStartOctave] = useState(0); // Starting at C4 (middle C)
   const [currentPlayingNote, setCurrentPlayingNote] = useState<number | null>(null);
+  const [defaultSoundsLoaded, setDefaultSoundsLoaded] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourcesRef = useRef<Map<number, AudioBufferSourceNode>>(new Map());
 
@@ -32,6 +58,13 @@ export const useMidiMapping = () => {
     };
   }, []);
 
+  // Load default sounds on first render
+  useEffect(() => {
+    if (!defaultSoundsLoaded && audioContextRef.current) {
+      loadDefaultSounds();
+    }
+  }, [defaultSoundsLoaded]);
+
   // Handle octave changes with expanded range
   const handleOctaveChange = useCallback((octave: number) => {
     // Standard piano has 88 keys (A0 to C8)
@@ -40,6 +73,47 @@ export const useMidiMapping = () => {
       setStartOctave(octave);
     }
   }, []);
+
+  // Load default instrument sounds
+  const loadDefaultSounds = useCallback(async () => {
+    if (!audioContextRef.current || defaultSoundsLoaded) return;
+    
+    setDefaultSoundsLoaded(true);
+    toast.info("Loading default instrument sounds...");
+    
+    const loadPromises = Object.values(DEFAULT_INSTRUMENTS).map(async (instrument) => {
+      try {
+        const response = await fetch(instrument.url);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await audioContextRef.current!.decodeAudioData(arrayBuffer);
+        
+        return {
+          midiNote: instrument.baseMidiNote,
+          audioBuffer,
+          filePath: instrument.url,
+          fileName: `${instrument.name}.mp3`
+        } as MidiMappedSound;
+      } catch (error) {
+        console.error(`Failed to load ${instrument.name} sample:`, error);
+        return null;
+      }
+    });
+    
+    const results = await Promise.all(loadPromises);
+    const validSounds = results.filter(Boolean) as MidiMappedSound[];
+    
+    if (validSounds.length > 0) {
+      setMappedSounds(prev => {
+        // Only add sounds that don't already have a mapping
+        const existingMidiNotes = new Set(prev.map(sound => sound.midiNote));
+        const newSounds = validSounds.filter(sound => !existingMidiNotes.has(sound.midiNote));
+        return [...prev, ...newSounds];
+      });
+      toast.success(`Loaded ${validSounds.length} default instrument sounds`);
+    } else {
+      toast.error("Failed to load default sounds");
+    }
+  }, [defaultSoundsLoaded]);
 
   // Map a sound file to a MIDI note
   const mapSoundToNote = useCallback(async (midiNote: number, file: File) => {
@@ -132,6 +206,7 @@ export const useMidiMapping = () => {
     mapSoundToNote,
     playMappedSound,
     stopAllSounds,
-    playNoteFromPianoRoll
+    playNoteFromPianoRoll,
+    loadDefaultSounds
   };
 };
