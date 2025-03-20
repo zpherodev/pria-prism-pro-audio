@@ -4,26 +4,27 @@ import { MidiMappedSound } from '@/types/pianoRoll';
 import { toast } from 'sonner';
 
 // Define the default instrument mappings
+//hotlinking from another site is bad mk
 const DEFAULT_INSTRUMENTS = {
   PIANO: {
     name: 'Piano',
     baseMidiNote: 60, // Middle C (C4)
-    url: 'https://freesound.org/data/previews/319/319253_5404962-lq.mp3' // Piano C4 sample
+    url: '' // Piano C4 sample
   },
   BASS: {
     name: 'Bass',
     baseMidiNote: 36, // C2
-    url: 'https://freesound.org/data/previews/371/371580_6891766-lq.mp3' // Bass C2 sample
+    url: '' // Bass C2 sample
   },
   DRUMS: {
     name: 'Drums (Kick)',
     baseMidiNote: 36, // Standard MIDI mapping for kick drum
-    url: 'https://freesound.org/data/previews/416/416044_6657174-lq.mp3' // Kick drum sample
+    url: '' // Kick drum sample
   },
   GUITAR: {
     name: 'Guitar',
     baseMidiNote: 48, // C3
-    url: 'https://freesound.org/data/previews/168/168823_85468-lq.mp3' // Guitar C3 sample
+    url: '' // Guitar C3 sample
   }
 };
 
