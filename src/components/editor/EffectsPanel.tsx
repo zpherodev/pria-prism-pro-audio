@@ -1,13 +1,17 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Sliders, AudioWaveform, Filter, Music4, BadgePlus, ChevronsUpDown, BadgePercent, PlayCircle } from 'lucide-react';
+import { Sliders, AudioWaveform, Filter, Music4, BadgePlus, ChevronsUpDown, BadgePercent, PlayCircle, Waveform } from 'lucide-react';
 import { Slider, VerticalSlider, FrequencySlider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SynthControls } from './SynthControls';
+import { SynthesizerSettings } from '@/utils/synthesizer';
 
 interface EffectsPanelProps {
   audioBuffer: AudioBuffer | null;
+  synthSettings?: SynthesizerSettings | null;
+  currentInstrument?: string;
+  onUpdateSynthSettings?: (settings: Partial<SynthesizerSettings>) => void;
 }
 
 // Professional 10-band EQ frequency presets with more precise frequencies
@@ -63,7 +67,10 @@ type ParamEQBand = {
 };
 
 export const EffectsPanel = ({
-  audioBuffer
+  audioBuffer,
+  synthSettings,
+  currentInstrument = 'PIANO',
+  onUpdateSynthSettings
 }: EffectsPanelProps) => {
   const [gain, setGain] = useState(0);
   const [eqValues, setEqValues] = useState(eqBands);
@@ -292,8 +299,12 @@ export const EffectsPanel = ({
   const dbMarkers = [12, 8, 4, 0, -4, -8, -12];
 
   return <div className="h-full flex flex-col">
-      <Tabs defaultValue="eq" className="w-full flex-grow">
+      <Tabs defaultValue="synth" className="w-full flex-grow">
         <TabsList className="mb-4 bg-zinc-800 rounded-full">
+          <TabsTrigger value="synth" className="flex items-center gap-1">
+            <Waveform className="h-4 w-4" />
+            <span>Synth</span>
+          </TabsTrigger>
           <TabsTrigger value="eq" className="flex items-center gap-1">
             <Sliders className="h-4 w-4" />
             <span>EQ</span>
@@ -313,6 +324,23 @@ export const EffectsPanel = ({
         </TabsList>
         
         <ScrollArea className="h-[calc(100%-40px)]">
+          {/* Synth Controls Tab */}
+          <TabsContent value="synth" className="space-y-4 pr-4">
+            {synthSettings && onUpdateSynthSettings ? (
+              <SynthControls 
+                synthSettings={synthSettings}
+                onUpdateSettings={onUpdateSynthSettings}
+                currentInstrument={currentInstrument}
+              />
+            ) : (
+              <div className="text-center py-8 text-zinc-500">
+                <Waveform className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                <p>No synthesizer available</p>
+                <p className="text-xs mt-2">Load an instrument to use the synthesizer</p>
+              </div>
+            )}
+          </TabsContent>
+          
           <TabsContent value="eq" className="space-y-4 pr-4">
             <div className="space-y-2 border-b rounded-xl py-[9px]">
               <div className="flex justify-between">

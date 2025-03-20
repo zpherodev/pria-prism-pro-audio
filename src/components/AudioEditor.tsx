@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { MediaBin } from './editor/MediaBin';
 import { Timeline } from './editor/Timeline';
@@ -20,46 +19,42 @@ export const AudioEditor = () => {
   const [zoom, setZoom] = useState(1);
   const [activeTab, setActiveTab] = useState<'midimap' | 'pianoroll'>('midimap');
   
-  // MIDI mapping state
   const {
     mappedSounds,
     startOctave,
     currentPlayingNote,
+    currentInstrument,
+    synthSettings,
     handleOctaveChange,
     mapSoundToNote,
     playMappedSound,
     stopAllSounds,
     playNoteFromPianoRoll,
-    loadDefaultSounds
+    loadDefaultSounds,
+    updateSynthSettings
   } = useMidiMapping();
   
-  // Piano roll note playback handler
   const handleNotePlayed = useCallback((note: Note) => {
     playNoteFromPianoRoll(note.key, note.velocity);
   }, [playNoteFromPianoRoll]);
   
-  // Handle file dropped on a piano key
   const handleSoundDrop = useCallback((midiNote: number, file: File) => {
     mapSoundToNote(midiNote, file);
   }, [mapSoundToNote]);
   
-  // Handle audio buffer loaded from file
   const handleAudioBufferLoaded = (buffer: AudioBuffer) => {
     setAudioBuffer(buffer);
   };
 
-  // Handle file selection in the MediaBin
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
-    setAudioBuffer(null); // Reset audio buffer when file changes
+    setAudioBuffer(null);
   };
 
-  // Load a specific instrument preset
   const handleLoadInstrument = (instrument: string) => {
     loadDefaultSounds(instrument);
   };
 
-  // Calculate panel widths based on collapse state
   const getGridClasses = () => {
     if (leftPanelCollapsed && rightPanelCollapsed) {
       return "grid-cols-[1fr_98fr_1fr]";
@@ -74,9 +69,7 @@ export const AudioEditor = () => {
   
   return (
     <div className="flex flex-col gap-4">
-      {/* Main Content Area */}
       <div className={`grid gap-4 ${getGridClasses()}`}>
-        {/* Left Panel - Media Bin with collapse toggle */}
         <div className={`panel flex flex-col ${leftPanelCollapsed ? "items-center" : ""}`}>
           {leftPanelCollapsed ? (
             <Button variant="ghost" size="icon" onClick={() => setLeftPanelCollapsed(false)} className="mb-2">
@@ -99,16 +92,13 @@ export const AudioEditor = () => {
           )}
         </div>
 
-        {/* Center Panel - Dynamic Content based on active tab */}
         <div className="flex flex-col gap-4">
-          {/* Preview is only shown when timeline is active */}
           {activeTab === 'midimap' && (
             <div className="panel flex-grow">
               <Preview file={selectedFile} onAudioBufferLoaded={handleAudioBufferLoaded} />
             </div>
           )}
           
-          {/* Tabs for Timeline and Piano Roll */}
           <div className={`panel ${activeTab === 'pianoroll' ? 'flex-grow' : ''}`}>
             <Tabs 
               defaultValue="midimap" 
@@ -129,7 +119,6 @@ export const AudioEditor = () => {
               
               <TabsContent value="midimap" className="flex-grow">
                 <div className="space-y-4">
-                  {/* Horizontal Piano for MIDI mapping */}
                   <HorizontalPiano 
                     startOctave={startOctave}
                     onOctaveChange={handleOctaveChange}
@@ -139,7 +128,6 @@ export const AudioEditor = () => {
                     currentPlayingNote={currentPlayingNote}
                   />
                   
-                  {/* List of mapped sounds */}
                   <div className="mapped-sounds-list">
                     <h3 className="text-sm font-medium mb-2">Mapped Sounds</h3>
                     {mappedSounds.length === 0 ? (
@@ -149,7 +137,6 @@ export const AudioEditor = () => {
                     ) : (
                       <div className="space-y-2 max-h-40 overflow-y-auto">
                         {mappedSounds.map(sound => {
-                          // Get note name (e.g., C4, F#3)
                           const noteNames = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
                           const octave = Math.floor(sound.midiNote / 12) - 1;
                           const noteName = noteNames[sound.midiNote % 12] + octave;
@@ -193,7 +180,6 @@ export const AudioEditor = () => {
           </div>
         </div>
 
-        {/* Right Panel - Effects with collapse toggle */}
         <div className={`panel flex flex-col ${rightPanelCollapsed ? "items-center" : ""}`}>
           {rightPanelCollapsed ? (
             <Button variant="ghost" size="icon" onClick={() => setRightPanelCollapsed(false)} className="mb-2">
@@ -207,7 +193,12 @@ export const AudioEditor = () => {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-              <EffectsPanel audioBuffer={audioBuffer} />
+              <EffectsPanel 
+                audioBuffer={audioBuffer} 
+                synthSettings={synthSettings}
+                currentInstrument={currentInstrument}
+                onUpdateSynthSettings={updateSynthSettings}
+              />
             </>
           )}
         </div>
