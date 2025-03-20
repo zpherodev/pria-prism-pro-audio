@@ -32,7 +32,7 @@ export const MediaBin = ({ onFileSelect, onLoadDefaultSounds, hasDefaultSounds }
               onClick={() => onLoadDefaultSounds('PIANO')}
             >
               <Piano className="mr-2 h-4 w-4" />
-              Piano (C4)
+              Piano
             </Button>
             <Button 
               variant="outline" 
@@ -40,7 +40,7 @@ export const MediaBin = ({ onFileSelect, onLoadDefaultSounds, hasDefaultSounds }
               onClick={() => onLoadDefaultSounds('BASS')}
             >
               <Radio className="mr-2 h-4 w-4" />
-              Bass (C2)
+              Bass
             </Button>
             <Button 
               variant="outline" 
@@ -48,7 +48,7 @@ export const MediaBin = ({ onFileSelect, onLoadDefaultSounds, hasDefaultSounds }
               onClick={() => onLoadDefaultSounds('DRUMS')}
             >
               <Drumstick className="mr-2 h-4 w-4" />
-              Drums (Kick)
+              Drums
             </Button>
             <Button 
               variant="outline" 
@@ -56,7 +56,7 @@ export const MediaBin = ({ onFileSelect, onLoadDefaultSounds, hasDefaultSounds }
               onClick={() => onLoadDefaultSounds('GUITAR')}
             >
               <Guitar className="mr-2 h-4 w-4" />
-              Guitar (C3)
+              Guitar
             </Button>
           </div>
         </div>
