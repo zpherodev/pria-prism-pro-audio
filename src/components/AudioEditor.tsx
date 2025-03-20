@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { MediaBin } from './editor/MediaBin';
 import { Timeline } from './editor/Timeline';

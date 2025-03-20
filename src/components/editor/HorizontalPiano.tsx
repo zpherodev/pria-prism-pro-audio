@@ -33,15 +33,22 @@ export const HorizontalPiano: React.FC<HorizontalPianoProps> = ({
   const totalKeys = 24; // 2 octaves x 12 keys per octave
   const midiOffset = startOctave * 12 + 60; // Middle C (C4) is MIDI note 60
   
-  // Handle octave navigation
+  // Calculate octave label based on standard piano range
+  const getOctaveLabel = (octave: number) => {
+    if (octave === -5) return "A0-B0";
+    if (octave === 3) return "C8";
+    return `${keyNames[0]}${octave + 4}-${keyNames[11]}${octave + 4}`;
+  };
+  
+  // Handle octave navigation with expanded range
   const incrementOctave = () => {
-    if (startOctave < 6) { // Standard piano has 88 keys (A0 to C8)
+    if (startOctave < 3) { // Up to C8
       onOctaveChange(startOctave + 1);
     }
   };
   
   const decrementOctave = () => {
-    if (startOctave > -1) {
+    if (startOctave > -5) { // Down to A0
       onOctaveChange(startOctave - 1);
     }
   };
@@ -105,13 +112,13 @@ export const HorizontalPiano: React.FC<HorizontalPianoProps> = ({
   return (
     <div className="horizontal-piano-container">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-sm font-medium">MIDI Mapping - Octaves {startOctave + 4} & {startOctave + 5}</h3>
+        <h3 className="text-sm font-medium">MIDI Mapping - {getOctaveLabel(startOctave)}</h3>
         <div className="flex items-center space-x-1">
           <Button 
             variant="outline" 
             size="icon" 
             onClick={decrementOctave}
-            disabled={startOctave <= -1}
+            disabled={startOctave <= -5}
           >
             <ChevronDown className="h-4 w-4" />
           </Button>
@@ -119,7 +126,7 @@ export const HorizontalPiano: React.FC<HorizontalPianoProps> = ({
             variant="outline" 
             size="icon" 
             onClick={incrementOctave}
-            disabled={startOctave >= 6}
+            disabled={startOctave >= 3}
           >
             <ChevronUp className="h-4 w-4" />
           </Button>
@@ -152,8 +159,10 @@ export const HorizontalPiano: React.FC<HorizontalPianoProps> = ({
               onDrop={(e) => handleDrop(e, midiNote)}
               onClick={() => onSoundSelect(midiNote)}
             >
-              {/* Only display label on C notes and A4 (440Hz) for reference */}
-              {(noteIndex === 0 || (noteIndex === 9 && octaveIndex === 0 && startOctave === 0)) && (
+              {/* Display label on C notes, A4 (440Hz), and special keys */}
+              {(noteIndex === 0 || 
+                (noteIndex === 9 && octaveIndex === 0 && startOctave === 0) || 
+                (noteIndex === 9 && startOctave === -5)) && (
                 <div className={`key-label text-xs absolute bottom-1 ${isBlackKey[noteIndex] ? 'text-white' : 'text-zinc-800'} text-center w-full`}>
                   {keyNames[noteIndex]}{startOctave + 4 + octaveIndex}
                 </div>

@@ -32,9 +32,13 @@ export const useMidiMapping = () => {
     };
   }, []);
 
-  // Handle octave changes
+  // Handle octave changes with expanded range
   const handleOctaveChange = useCallback((octave: number) => {
-    setStartOctave(octave);
+    // Standard piano has 88 keys (A0 to C8)
+    // Allow octave range from -5 (A0) to 3 (C8)
+    if (octave >= -5 && octave <= 3) {
+      setStartOctave(octave);
+    }
   }, []);
 
   // Map a sound file to a MIDI note
