@@ -96,7 +96,7 @@ export const useMidiMapping = () => {
     // Clean up when finished
     source.onended = () => {
       audioSourcesRef.current.delete(midiNote);
-      setCurrentPlayingNote(null);
+      setCurrentPlayingNote(prev => prev === midiNote ? null : prev);
     };
   }, [mappedSounds]);
 
