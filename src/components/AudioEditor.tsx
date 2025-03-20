@@ -54,6 +54,11 @@ export const AudioEditor = () => {
     setAudioBuffer(null); // Reset audio buffer when file changes
   };
 
+  // Load a specific instrument preset
+  const handleLoadInstrument = (instrument: string) => {
+    loadDefaultSounds(instrument);
+  };
+
   // Calculate panel widths based on collapse state
   const getGridClasses = () => {
     if (leftPanelCollapsed && rightPanelCollapsed) {
@@ -87,7 +92,7 @@ export const AudioEditor = () => {
               </div>
               <MediaBin 
                 onFileSelect={handleFileSelect} 
-                onLoadDefaultSounds={loadDefaultSounds}
+                onLoadDefaultSounds={handleLoadInstrument}
                 hasDefaultSounds={mappedSounds.length > 0}
               />
             </>
@@ -139,7 +144,7 @@ export const AudioEditor = () => {
                     <h3 className="text-sm font-medium mb-2">Mapped Sounds</h3>
                     {mappedSounds.length === 0 ? (
                       <div className="text-sm text-zinc-500 text-center p-4 border border-dashed border-zinc-700 rounded-md">
-                        No sounds mapped yet. Drag audio files onto piano keys or use the "Load Default Sounds" button.
+                        No sounds mapped yet. Drag audio files onto piano keys or use the instrument preset buttons.
                       </div>
                     ) : (
                       <div className="space-y-2 max-h-40 overflow-y-auto">

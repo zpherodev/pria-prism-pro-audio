@@ -58,13 +58,6 @@ export const useMidiMapping = () => {
     };
   }, []);
 
-  // Load default sounds on first render
-  useEffect(() => {
-    if (!defaultSoundsLoaded && audioContextRef.current) {
-      loadDefaultSounds();
-    }
-  }, [defaultSoundsLoaded]);
-
   // Handle octave changes with expanded range
   const handleOctaveChange = useCallback((octave: number) => {
     // Standard piano has 88 keys (A0 to C8)
@@ -74,46 +67,43 @@ export const useMidiMapping = () => {
     }
   }, []);
 
-  // Load default instrument sounds
-  const loadDefaultSounds = useCallback(async () => {
-    if (!audioContextRef.current || defaultSoundsLoaded) return;
+  // Load a specific default instrument sound
+  const loadDefaultSounds = useCallback(async (instrumentKey: string) => {
+    if (!audioContextRef.current) return;
     
-    setDefaultSoundsLoaded(true);
-    toast.info("Loading default instrument sounds...");
-    
-    const loadPromises = Object.values(DEFAULT_INSTRUMENTS).map(async (instrument) => {
-      try {
-        const response = await fetch(instrument.url);
-        const arrayBuffer = await response.arrayBuffer();
-        const audioBuffer = await audioContextRef.current!.decodeAudioData(arrayBuffer);
-        
-        return {
-          midiNote: instrument.baseMidiNote,
-          audioBuffer,
-          filePath: instrument.url,
-          fileName: `${instrument.name}.mp3`
-        } as MidiMappedSound;
-      } catch (error) {
-        console.error(`Failed to load ${instrument.name} sample:`, error);
-        return null;
-      }
-    });
-    
-    const results = await Promise.all(loadPromises);
-    const validSounds = results.filter(Boolean) as MidiMappedSound[];
-    
-    if (validSounds.length > 0) {
-      setMappedSounds(prev => {
-        // Only add sounds that don't already have a mapping
-        const existingMidiNotes = new Set(prev.map(sound => sound.midiNote));
-        const newSounds = validSounds.filter(sound => !existingMidiNotes.has(sound.midiNote));
-        return [...prev, ...newSounds];
-      });
-      toast.success(`Loaded ${validSounds.length} default instrument sounds`);
-    } else {
-      toast.error("Failed to load default sounds");
+    const instrument = DEFAULT_INSTRUMENTS[instrumentKey as keyof typeof DEFAULT_INSTRUMENTS];
+    if (!instrument) {
+      toast.error(`Unknown instrument: ${instrumentKey}`);
+      return;
     }
-  }, [defaultSoundsLoaded]);
+    
+    toast.info(`Loading ${instrument.name} sound...`);
+    
+    try {
+      const response = await fetch(instrument.url);
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+      
+      const newSound = {
+        midiNote: instrument.baseMidiNote,
+        audioBuffer,
+        filePath: instrument.url,
+        fileName: `${instrument.name}.mp3`
+      } as MidiMappedSound;
+      
+      setMappedSounds(prev => {
+        // Remove any existing mapping for this note
+        const filtered = prev.filter(sound => sound.midiNote !== newSound.midiNote);
+        return [...filtered, newSound];
+      });
+      
+      toast.success(`Loaded ${instrument.name} sound`);
+      setDefaultSoundsLoaded(true);
+    } catch (error) {
+      console.error(`Failed to load ${instrument.name} sample:`, error);
+      toast.error(`Failed to load ${instrument.name} sound`);
+    }
+  }, []);
 
   // Map a sound file to a MIDI note
   const mapSoundToNote = useCallback(async (midiNote: number, file: File) => {
