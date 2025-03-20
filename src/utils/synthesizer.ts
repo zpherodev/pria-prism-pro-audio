@@ -142,7 +142,8 @@ export class Synthesizer {
     mainGain: GainNode,
     filter: BiquadFilterNode,
     lfo?: OscillatorNode,
-    lfoGain?: GainNode
+    lfoGain?: GainNode,
+    releaseTimeout?: number
   }>;
   
   constructor(audioContext: AudioContext, instrument: string = 'PIANO') {
@@ -174,6 +175,7 @@ export class Synthesizer {
    * Play a note with the current synthesizer settings
    */
   playNote(midiNote: number, velocity: number = 1): void {
+    console.log(`Playing note ${midiNote} with velocity ${velocity}`);
     // Stop the note if it's already playing
     if (this.activeNotes.has(midiNote)) {
       this.stopNote(midiNote);
@@ -250,7 +252,7 @@ export class Synthesizer {
           break;
         case 'frequency':
           oscillators.forEach(osc => {
-            lfoGain.connect(osc.frequency);
+            lfoGain?.connect(osc.frequency);
           });
           break;
         case 'filter':
@@ -278,6 +280,8 @@ export class Synthesizer {
       lfo,
       lfoGain
     });
+    
+    console.log(`Note ${midiNote} active. Total active notes: ${this.activeNotes.size}`);
   }
 
   /**
@@ -289,7 +293,8 @@ export class Synthesizer {
     mainGain: GainNode,
     filter: BiquadFilterNode,
     lfo?: OscillatorNode,
-    lfoGain?: GainNode
+    lfoGain?: GainNode,
+    releaseTimeout?: number
   }): void {
     // Update filter settings
     note.filter.type = this.settings.filter.type;
@@ -327,8 +332,17 @@ export class Synthesizer {
    * Stop playing a note
    */
   stopNote(midiNote: number): void {
+    console.log(`Stopping note ${midiNote}`);
     const note = this.activeNotes.get(midiNote);
-    if (!note) return;
+    if (!note) {
+      console.log(`Note ${midiNote} not found in active notes`);
+      return;
+    }
+    
+    // Clear any existing release timeout
+    if (note.releaseTimeout) {
+      clearTimeout(note.releaseTimeout);
+    }
     
     const now = this.audioContext.currentTime;
     const release = this.settings.envelope.release;
@@ -339,7 +353,7 @@ export class Synthesizer {
     note.mainGain.gain.linearRampToValueAtTime(0, now + release);
     
     // Stop and disconnect everything after release time
-    setTimeout(() => {
+    const releaseTimeout = window.setTimeout(() => {
       // Stop oscillators
       note.oscillators.forEach(osc => {
         try {
@@ -368,13 +382,18 @@ export class Synthesizer {
       
       // Remove from active notes
       this.activeNotes.delete(midiNote);
-    }, release * 1000);
+      console.log(`Note ${midiNote} removed. Total active notes: ${this.activeNotes.size}`);
+    }, release * 1000 + 100); // Add a little buffer to ensure the release is complete
+    
+    // Store the timeout so we can clear it if needed
+    note.releaseTimeout = releaseTimeout;
   }
 
   /**
    * Stop all playing notes
    */
   stopAllNotes(): void {
+    console.log(`Stopping all notes (${this.activeNotes.size} active)`);
     const noteIds = Array.from(this.activeNotes.keys());
     noteIds.forEach(noteId => this.stopNote(noteId));
   }
@@ -390,8 +409,16 @@ export class Synthesizer {
    * Set current instrument preset
    */
   setInstrument(instrument: string): void {
+    console.log(`Setting instrument to ${instrument}`);
     if (instrument in DEFAULT_SYNTH_SETTINGS) {
+      // Stop all playing notes first
+      this.stopAllNotes();
+      
+      // Apply the new settings
       this.settings = { ...DEFAULT_SYNTH_SETTINGS[instrument] };
+      console.log("New settings applied:", this.settings);
+    } else {
+      console.error(`Unknown instrument: ${instrument}`);
     }
   }
 }

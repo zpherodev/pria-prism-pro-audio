@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { MidiMappedSound } from '@/types/pianoRoll';
 import { toast } from 'sonner';
@@ -34,6 +33,7 @@ export const useMidiMapping = () => {
   const audioSourcesRef = useRef<Map<number, AudioBufferSourceNode>>(new Map());
   const [synthSettings, setSynthSettings] = useState<SynthesizerSettings | null>(null);
   const contextClosedRef = useRef<boolean>(false);
+  const activeNotesRef = useRef<Set<number>>(new Set());
 
   // Initialize AudioContext and Synthesizer
   useEffect(() => {
@@ -91,11 +91,25 @@ export const useMidiMapping = () => {
 
   // Load default instrument sound (now uses the synthesizer)
   const loadDefaultSounds = useCallback(async (instrumentKey: string) => {
+    // Safety check - make sure it's a valid instrument key
+    if (!DEFAULT_INSTRUMENTS[instrumentKey as keyof typeof DEFAULT_INSTRUMENTS]) {
+      toast.error(`Unknown instrument: ${instrumentKey}`);
+      return;
+    }
+
     // If AudioContext is closed, create a new one
     if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
       try {
         audioContextRef.current = new AudioContext();
         contextClosedRef.current = false;
+        
+        // We need to create a new synthesizer since the context is new
+        synthesizerRef.current = new Synthesizer(audioContextRef.current, instrumentKey);
+        setSynthSettings(synthesizerRef.current.getSettings());
+        setCurrentInstrument(instrumentKey);
+        
+        toast.success(`Loaded ${DEFAULT_INSTRUMENTS[instrumentKey as keyof typeof DEFAULT_INSTRUMENTS].name} synthesizer`);
+        return;
       } catch (e) {
         console.error("Failed to create AudioContext:", e);
         toast.error("Failed to initialize audio. Please refresh the page.");
@@ -103,6 +117,7 @@ export const useMidiMapping = () => {
       }
     }
     
+    // Resume the context if needed
     if (audioContextRef.current.state === 'suspended') {
       try {
         await audioContextRef.current.resume();
@@ -111,28 +126,28 @@ export const useMidiMapping = () => {
       }
     }
     
-    const instrument = DEFAULT_INSTRUMENTS[instrumentKey as keyof typeof DEFAULT_INSTRUMENTS];
-    if (!instrument) {
-      toast.error(`Unknown instrument: ${instrumentKey}`);
-      return;
+    // Stop any currently playing notes
+    stopAllSounds();
+    
+    try {
+      // Update the synthesizer with the new instrument
+      if (synthesizerRef.current) {
+        synthesizerRef.current.setInstrument(instrumentKey);
+        setSynthSettings(synthesizerRef.current.getSettings());
+      } else if (audioContextRef.current) {
+        // Create a new synthesizer if needed
+        synthesizerRef.current = new Synthesizer(audioContextRef.current, instrumentKey);
+        setSynthSettings(synthesizerRef.current.getSettings());
+      }
+      
+      // Update the current instrument
+      setCurrentInstrument(instrumentKey);
+      
+      toast.success(`Loaded ${DEFAULT_INSTRUMENTS[instrumentKey as keyof typeof DEFAULT_INSTRUMENTS].name} synthesizer`);
+    } catch (e) {
+      console.error("Error loading instrument:", e);
+      toast.error("Failed to load instrument. Please try again.");
     }
-    
-    // Create a new synthesizer if needed
-    if (!synthesizerRef.current && audioContextRef.current) {
-      synthesizerRef.current = new Synthesizer(audioContextRef.current, instrumentKey);
-    } else if (synthesizerRef.current) {
-      // Update existing synthesizer
-      synthesizerRef.current.setInstrument(instrumentKey);
-    } else {
-      toast.error("Failed to initialize synthesizer");
-      return;
-    }
-    
-    // Set the current instrument and update the synthesizer
-    setCurrentInstrument(instrumentKey);
-    setSynthSettings(synthesizerRef.current.getSettings());
-    
-    toast.success(`Loaded ${instrument.name} synthesizer`);
   }, []);
 
   // Map a sound file to a MIDI note (still keeps sample capability)
@@ -220,20 +235,28 @@ export const useMidiMapping = () => {
       source.start();
       audioSourcesRef.current.set(midiNote, source);
       setCurrentPlayingNote(midiNote);
+      activeNotesRef.current.add(midiNote);
       
       // Clean up when finished
       source.onended = () => {
         audioSourcesRef.current.delete(midiNote);
+        activeNotesRef.current.delete(midiNote);
         setCurrentPlayingNote(prev => prev === midiNote ? null : prev);
       };
     } else if (synthesizerRef.current) {
       // No sample found, use the synthesizer
       synthesizerRef.current.playNote(midiNote, 1.0);
       setCurrentPlayingNote(midiNote);
+      activeNotesRef.current.add(midiNote);
       
       // Clear the current playing note after a reasonable time (2 seconds)
       setTimeout(() => {
-        setCurrentPlayingNote(prev => prev === midiNote ? null : prev);
+        // Only clear if this note hasn't been stopped already
+        if (activeNotesRef.current.has(midiNote)) {
+          synthesizerRef.current?.stopNote(midiNote);
+          activeNotesRef.current.delete(midiNote);
+          setCurrentPlayingNote(prev => prev === midiNote ? null : prev);
+        }
       }, 2000);
     }
   }, [mappedSounds, currentInstrument]);
@@ -255,6 +278,8 @@ export const useMidiMapping = () => {
       synthesizerRef.current.stopAllNotes();
     }
     
+    // Clear active notes tracking
+    activeNotesRef.current.clear();
     setCurrentPlayingNote(null);
   }, []);
 
@@ -294,20 +319,17 @@ export const useMidiMapping = () => {
         // No sample found, use the synthesizer with velocity
         synthesizerRef.current.playNote(note, velocity / 127);
         setCurrentPlayingNote(note);
-        
-        // Clear the current playing note after the note is expected to complete
-        const releaseTime = synthSettings?.envelope.release || 0.5;
-        setTimeout(() => {
-          setCurrentPlayingNote(prev => prev === note ? null : prev);
-        }, (releaseTime + 1) * 1000); // Add 1 second buffer
+        activeNotesRef.current.add(note);
       }
     } else {
       // Note off
       if (synthesizerRef.current) {
         synthesizerRef.current.stopNote(note);
+        activeNotesRef.current.delete(note);
+        setCurrentPlayingNote(prev => prev === note ? null : prev);
       }
     }
-  }, [mappedSounds, playMappedSound, synthSettings, currentInstrument]);
+  }, [mappedSounds, playMappedSound, currentInstrument]);
 
   // Update synthesizer settings
   const updateSynthSettings = useCallback((newSettings: Partial<SynthesizerSettings>) => {
