@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Sliders, 
-  Waveform, 
+  Waves, 
   BarChart2, 
   Activity, 
   ToggleLeft, 
@@ -12,8 +12,8 @@ import {
   Zap,
   SquareCode,
   Triangle,
-  WaveSine,
-  WaveSquare
+  Hash,
+  Square
 } from 'lucide-react';
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -100,15 +100,15 @@ export const SynthControls: React.FC<SynthControlsProps> = ({
   const getOscillatorIcon = (type: OscillatorType) => {
     switch (type) {
       case 'sine':
-        return <WaveSine className="h-4 w-4" />;
+        return <Waves className="h-4 w-4" />;
       case 'square':
-        return <WaveSquare className="h-4 w-4" />;
+        return <Square className="h-4 w-4" />;
       case 'sawtooth':
         return <Zap className="h-4 w-4" />;
       case 'triangle':
         return <Triangle className="h-4 w-4" />;
       default:
-        return <Waveform className="h-4 w-4" />;
+        return <Waves className="h-4 w-4" />;
     }
   };
 
@@ -124,7 +124,7 @@ export const SynthControls: React.FC<SynthControlsProps> = ({
       <Tabs defaultValue="oscillators" className="w-full">
         <TabsList className="grid grid-cols-4 mb-4">
           <TabsTrigger value="oscillators" className="text-xs flex flex-col items-center gap-1 py-1 h-auto">
-            <Waveform className="h-4 w-4" />
+            <Waves className="h-4 w-4" />
             <span>Oscillators</span>
           </TabsTrigger>
           <TabsTrigger value="envelope" className="text-xs flex flex-col items-center gap-1 py-1 h-auto">
@@ -171,10 +171,10 @@ export const SynthControls: React.FC<SynthControlsProps> = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sine" className="flex items-center gap-2">
-                      <WaveSine className="h-4 w-4 inline mr-1" /> Sine
+                      <Waves className="h-4 w-4 inline mr-1" /> Sine
                     </SelectItem>
                     <SelectItem value="square" className="flex items-center gap-2">
-                      <WaveSquare className="h-4 w-4 inline mr-1" /> Square
+                      <Square className="h-4 w-4 inline mr-1" /> Square
                     </SelectItem>
                     <SelectItem value="sawtooth" className="flex items-center gap-2">
                       <Zap className="h-4 w-4 inline mr-1" /> Sawtooth

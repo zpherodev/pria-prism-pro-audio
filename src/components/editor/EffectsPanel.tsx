@@ -1,18 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sliders, AudioWaveform, Filter, Music4, BadgePlus, ChevronsUpDown, BadgePercent, PlayCircle, Waveform } from 'lucide-react';
+import { Sliders, AudioWaveform, Filter, Music4, BadgePlus, ChevronsUpDown, BadgePercent, PlayCircle, Waves } from 'lucide-react';
 import { Slider, VerticalSlider, FrequencySlider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SynthControls } from './SynthControls';
 import { SynthesizerSettings } from '@/utils/synthesizer';
-
-interface EffectsPanelProps {
-  audioBuffer: AudioBuffer | null;
-  synthSettings?: SynthesizerSettings | null;
-  currentInstrument?: string;
-  onUpdateSynthSettings?: (settings: Partial<SynthesizerSettings>) => void;
-}
 
 // Professional 10-band EQ frequency presets with more precise frequencies
 const eqBands = [{
@@ -302,7 +295,7 @@ export const EffectsPanel = ({
       <Tabs defaultValue="synth" className="w-full flex-grow">
         <TabsList className="mb-4 bg-zinc-800 rounded-full">
           <TabsTrigger value="synth" className="flex items-center gap-1">
-            <Waveform className="h-4 w-4" />
+            <Waves className="h-4 w-4" />
             <span>Synth</span>
           </TabsTrigger>
           <TabsTrigger value="eq" className="flex items-center gap-1">
@@ -334,7 +327,7 @@ export const EffectsPanel = ({
               />
             ) : (
               <div className="text-center py-8 text-zinc-500">
-                <Waveform className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                <Waves className="h-12 w-12 mx-auto mb-2 opacity-30" />
                 <p>No synthesizer available</p>
                 <p className="text-xs mt-2">Load an instrument to use the synthesizer</p>
               </div>
@@ -710,52 +703,4 @@ export const EffectsPanel = ({
                         <span>{paramEQBands.find(b => b.id === selectedBand)?.q.toFixed(2)}</span>
                       </div>
                       <Slider 
-                        value={[paramEQBands.find(b => b.id === selectedBand)?.q || 1]} 
-                        min={0.1} 
-                        max={10} 
-                        step={0.1} 
-                        onValueChange={(values) => selectedBand && updateParamEQBand(selectedBand, 'q', values[0])}
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Filter type selector */}
-              <div className="flex gap-2 mt-4">
-                <Button 
-                  variant={filterType === 'parametric' ? 'default' : 'outline'}
-                  size="sm" 
-                  className={`text-xs flex-1 ${filterType === 'parametric' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700'}`}
-                  onClick={() => setFilterType('parametric')}
-                >
-                  Parametric EQ
-                </Button>
-                <Button 
-                  variant={filterType === 'lowpass' ? 'default' : 'outline'}
-                  size="sm" 
-                  className={`text-xs flex-1 ${filterType === 'lowpass' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700'}`}
-                  onClick={() => setFilterType('lowpass')}
-                >
-                  Low-Pass
-                </Button>
-                <Button 
-                  variant={filterType === 'highpass' ? 'default' : 'outline'}
-                  size="sm" 
-                  className={`text-xs flex-1 ${filterType === 'highpass' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700'}`}
-                  onClick={() => setFilterType('highpass')}
-                >
-                  High-Pass
-                </Button>
-              </div>
-              
-              <Button onClick={() => handleApplyEffect('filters')} disabled={!audioBuffer} className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full">
-                Apply Filters
-              </Button>
-            </div>
-          </TabsContent>
-        </ScrollArea>
-      </Tabs>
-    </div>;
-};
+                        value
