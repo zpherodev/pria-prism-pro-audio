@@ -6,10 +6,12 @@ import { AudioWaveform } from './AudioWaveform';
 import { SpectrumAnalysis } from './SpectrumAnalysis';
 import { PhaseAnalysis } from './PhaseAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 interface PreviewProps {
   file: File | null;
   onAudioBufferLoaded?: (buffer: AudioBuffer) => void;
 }
+
 export const Preview = ({
   file,
   onAudioBufferLoaded
@@ -22,6 +24,7 @@ export const Preview = ({
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
+  const contextClosedRef = useRef<boolean>(false);
 
   // Clean up audio URL when component unmounts or file changes
   useEffect(() => {
@@ -32,8 +35,9 @@ export const Preview = ({
       // Load audio buffer for timeline
       const loadAudioBuffer = async () => {
         try {
-          const arrayBuffer = await file.arrayBuffer();
+          // Create a temporary context just for decoding
           const tempContext = new AudioContext();
+          const arrayBuffer = await file.arrayBuffer();
           const buffer = await tempContext.decodeAudioData(arrayBuffer);
           setAudioBuffer(buffer);
 
@@ -41,12 +45,16 @@ export const Preview = ({
           if (onAudioBufferLoaded) {
             onAudioBufferLoaded(buffer);
           }
-          tempContext.close();
+          
+          // We don't need to keep this context open after decoding
+          await tempContext.close();
         } catch (error) {
           console.error("Error loading audio buffer:", error);
         }
       };
+      
       loadAudioBuffer();
+      
       return () => {
         URL.revokeObjectURL(url);
       };
@@ -55,11 +63,24 @@ export const Preview = ({
 
   // Initialize audio context when component mounts
   useEffect(() => {
-    const context = new AudioContext();
-    setAudioContext(context);
+    let context: AudioContext | null = null;
+    
+    try {
+      context = new AudioContext();
+      setAudioContext(context);
+      contextClosedRef.current = false;
+    } catch (e) {
+      console.error("Failed to create AudioContext:", e);
+    }
+    
     return () => {
-      if (context) {
-        context.close();
+      if (context && !contextClosedRef.current) {
+        try {
+          context.close();
+          contextClosedRef.current = true;
+        } catch (e) {
+          console.error("Error closing AudioContext:", e);
+        }
       }
     };
   }, []);
@@ -67,6 +88,13 @@ export const Preview = ({
   // Set up audio nodes when file or audio context changes
   useEffect(() => {
     if (!audioContext || !file || !file.type.includes('audio') || !audioRef.current) return;
+    
+    // Resume context if it's suspended
+    if (audioContext.state === 'suspended') {
+      audioContext.resume().catch(err => {
+        console.error("Failed to resume AudioContext:", err);
+      });
+    }
 
     // Make sure previous connections are cleaned up
     if (audioSource) {
@@ -81,10 +109,7 @@ export const Preview = ({
     // Connect audio element to context when it's loaded
     const handleCanPlay = () => {
       console.log("Audio can play now, setting up audio graph");
-      if (audioContext.state === 'suspended') {
-        audioContext.resume();
-      }
-
+      
       // Create source from audio element
       const source = audioContext.createMediaElementSource(audioRef.current!);
       setAudioSource(source);
@@ -109,12 +134,14 @@ export const Preview = ({
         once: true
       });
     }
+    
     return () => {
       if (audioRef.current) {
         audioRef.current.removeEventListener('canplay', handleCanPlay);
       }
     };
-  }, [audioContext, file]);
+  }, [audioContext, file, audioSource, volume]);
+
   const togglePlayback = () => {
     if (!audioRef.current || !audioContext) return;
 
@@ -122,8 +149,11 @@ export const Preview = ({
     if (audioContext.state === 'suspended') {
       audioContext.resume().then(() => {
         console.log("AudioContext resumed");
+      }).catch(err => {
+        console.error("Failed to resume AudioContext:", err);
       });
     }
+
     if (isPlaying) {
       console.log("Pausing audio");
       audioRef.current.pause();
@@ -135,6 +165,7 @@ export const Preview = ({
     }
     setIsPlaying(!isPlaying);
   };
+
   const handleVolumeChange = (value: number[]) => {
     setVolume(value[0]);
     if (audioRef.current) {
@@ -147,6 +178,7 @@ export const Preview = ({
     console.log(`Timeline selection: ${startTime}s - ${endTime}s`);
     // You would implement actual editing functionality here
   };
+
   return <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">Audio Analysis</h3>

@@ -24,6 +24,7 @@ export const HorizontalPiano: React.FC<HorizontalPianoProps> = ({
 }) => {
   const [draggedOverKey, setDraggedOverKey] = useState<number | null>(null);
   const keysRef = useRef<(HTMLDivElement | null)[]>([]);
+  const keyboardListenerRef = useRef<((e: KeyboardEvent) => void) | null>(null);
   
   // Piano key layout: 12 keys per octave, C through B
   const keyNames = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
@@ -87,6 +88,11 @@ export const HorizontalPiano: React.FC<HorizontalPianoProps> = ({
   // Keyboard event handlers
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Only respond if no modal dialogs or text fields are active
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
       // Map computer keyboard to piano keys for first octave
       // Bottom row: Z-M for white keys, S-J for black keys
       const keyMap: Record<string, number> = {
@@ -103,9 +109,13 @@ export const HorizontalPiano: React.FC<HorizontalPianoProps> = ({
       }
     };
     
+    keyboardListenerRef.current = handleKeyDown;
     window.addEventListener('keydown', handleKeyDown);
+    
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      if (keyboardListenerRef.current) {
+        window.removeEventListener('keydown', keyboardListenerRef.current);
+      }
     };
   }, [midiOffset, onSoundSelect]);
   

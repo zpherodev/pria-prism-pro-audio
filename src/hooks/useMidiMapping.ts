@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { MidiMappedSound } from '@/types/pianoRoll';
 import { toast } from 'sonner';
@@ -32,11 +33,18 @@ export const useMidiMapping = () => {
   const synthesizerRef = useRef<Synthesizer | null>(null);
   const audioSourcesRef = useRef<Map<number, AudioBufferSourceNode>>(new Map());
   const [synthSettings, setSynthSettings] = useState<SynthesizerSettings | null>(null);
+  const contextClosedRef = useRef<boolean>(false);
 
   // Initialize AudioContext and Synthesizer
   useEffect(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext();
+    if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+      try {
+        audioContextRef.current = new AudioContext();
+        contextClosedRef.current = false;
+      } catch (e) {
+        console.error("Failed to create AudioContext:", e);
+        return;
+      }
     }
     
     if (!synthesizerRef.current && audioContextRef.current) {
@@ -60,8 +68,14 @@ export const useMidiMapping = () => {
         synthesizerRef.current.stopAllNotes();
       }
       
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
+      // Only close the AudioContext if it hasn't been closed already
+      if (audioContextRef.current && !contextClosedRef.current) {
+        try {
+          audioContextRef.current.close();
+          contextClosedRef.current = true;
+        } catch (e) {
+          console.error("Error closing AudioContext:", e);
+        }
       }
     };
   }, [currentInstrument]);
@@ -77,7 +91,25 @@ export const useMidiMapping = () => {
 
   // Load default instrument sound (now uses the synthesizer)
   const loadDefaultSounds = useCallback(async (instrumentKey: string) => {
-    if (!audioContextRef.current || !synthesizerRef.current) return;
+    // If AudioContext is closed, create a new one
+    if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+      try {
+        audioContextRef.current = new AudioContext();
+        contextClosedRef.current = false;
+      } catch (e) {
+        console.error("Failed to create AudioContext:", e);
+        toast.error("Failed to initialize audio. Please refresh the page.");
+        return;
+      }
+    }
+    
+    if (audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+      } catch (e) {
+        console.error("Failed to resume AudioContext:", e);
+      }
+    }
     
     const instrument = DEFAULT_INSTRUMENTS[instrumentKey as keyof typeof DEFAULT_INSTRUMENTS];
     if (!instrument) {
@@ -85,9 +117,19 @@ export const useMidiMapping = () => {
       return;
     }
     
+    // Create a new synthesizer if needed
+    if (!synthesizerRef.current && audioContextRef.current) {
+      synthesizerRef.current = new Synthesizer(audioContextRef.current, instrumentKey);
+    } else if (synthesizerRef.current) {
+      // Update existing synthesizer
+      synthesizerRef.current.setInstrument(instrumentKey);
+    } else {
+      toast.error("Failed to initialize synthesizer");
+      return;
+    }
+    
     // Set the current instrument and update the synthesizer
     setCurrentInstrument(instrumentKey);
-    synthesizerRef.current.setInstrument(instrumentKey);
     setSynthSettings(synthesizerRef.current.getSettings());
     
     toast.success(`Loaded ${instrument.name} synthesizer`);
@@ -95,7 +137,15 @@ export const useMidiMapping = () => {
 
   // Map a sound file to a MIDI note (still keeps sample capability)
   const mapSoundToNote = useCallback(async (midiNote: number, file: File) => {
-    if (!audioContextRef.current) return;
+    if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+      try {
+        audioContextRef.current = new AudioContext();
+        contextClosedRef.current = false;
+      } catch (e) {
+        console.error("Failed to create AudioContext:", e);
+        return false;
+      }
+    }
     
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -123,7 +173,28 @@ export const useMidiMapping = () => {
 
   // Play a mapped sound (sample or synthesized)
   const playMappedSound = useCallback((midiNote: number) => {
-    if (!audioContextRef.current) return;
+    if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+      try {
+        audioContextRef.current = new AudioContext();
+        contextClosedRef.current = false;
+        
+        // Recreate synthesizer with new context
+        if (!synthesizerRef.current) {
+          synthesizerRef.current = new Synthesizer(audioContextRef.current, currentInstrument);
+          setSynthSettings(synthesizerRef.current.getSettings());
+        }
+      } catch (e) {
+        console.error("Failed to create AudioContext:", e);
+        return;
+      }
+    }
+    
+    // Resume the audio context if it's suspended (needed for browsers with autoplay restrictions)
+    if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume().catch(err => {
+        console.error("Failed to resume AudioContext:", err);
+      });
+    }
     
     // Find the mapped sound sample for this note if it exists
     const sound = mappedSounds.find(s => s.midiNote === midiNote);
@@ -165,7 +236,7 @@ export const useMidiMapping = () => {
         setCurrentPlayingNote(prev => prev === midiNote ? null : prev);
       }, 2000);
     }
-  }, [mappedSounds]);
+  }, [mappedSounds, currentInstrument]);
 
   // Stop all playing sounds
   const stopAllSounds = useCallback(() => {
@@ -189,6 +260,29 @@ export const useMidiMapping = () => {
 
   // Play a mapped sound when a MIDI note is received from the piano roll
   const playNoteFromPianoRoll = useCallback((note: number, velocity: number) => {
+    if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+      try {
+        audioContextRef.current = new AudioContext();
+        contextClosedRef.current = false;
+        
+        // Recreate synthesizer with new context
+        if (!synthesizerRef.current) {
+          synthesizerRef.current = new Synthesizer(audioContextRef.current, currentInstrument);
+          setSynthSettings(synthesizerRef.current.getSettings());
+        }
+      } catch (e) {
+        console.error("Failed to create AudioContext:", e);
+        return;
+      }
+    }
+    
+    // Resume the audio context if it's suspended
+    if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume().catch(err => {
+        console.error("Failed to resume AudioContext:", err);
+      });
+    }
+    
     if (velocity > 0) {
       // First check if there's a sample mapped
       const sound = mappedSounds.find(s => s.midiNote === note);
@@ -213,7 +307,7 @@ export const useMidiMapping = () => {
         synthesizerRef.current.stopNote(note);
       }
     }
-  }, [mappedSounds, playMappedSound, synthSettings]);
+  }, [mappedSounds, playMappedSound, synthSettings, currentInstrument]);
 
   // Update synthesizer settings
   const updateSynthSettings = useCallback((newSettings: Partial<SynthesizerSettings>) => {
