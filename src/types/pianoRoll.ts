@@ -24,3 +24,11 @@ export interface SheetMusicSettings {
   totalRows: number;
   rowSpacing?: number; // Added row spacing option
 }
+
+// New interface for MIDI-mapped sounds
+export interface MidiMappedSound {
+  midiNote: number;
+  audioBuffer: AudioBuffer | null;
+  filePath: string;
+  fileName: string;
+}

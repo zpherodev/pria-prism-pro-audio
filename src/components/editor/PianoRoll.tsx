@@ -16,12 +16,14 @@ interface PianoRollProps {
   duration: number;
   zoom: number;
   onZoomChange?: (zoom: number) => void;
+  onNotePlayed?: (note: Note) => void;
 }
 
 const PianoRoll: React.FC<PianoRollProps> = ({ 
   duration, 
   zoom,
-  onZoomChange 
+  onZoomChange,
+  onNotePlayed 
 }) => {
   const [sheetMusicSettings, setSheetMusicSettings] = useState<SheetMusicSettings>({
     beatsPerMeasure: 4,
@@ -64,6 +66,20 @@ const PianoRoll: React.FC<PianoRollProps> = ({
     setAutomationLanes,
     getValueAtTime
   } = useAutomationState(duration);
+
+  // Pass note played events to parent when notes are played in the piano roll
+  useEffect(() => {
+    if (onNotePlayed && isPlaying) {
+      const notesInCurrentTimeWindow = notes.filter(note => 
+        note.startTime <= currentPosition && 
+        note.startTime + note.duration >= currentPosition
+      );
+      
+      notesInCurrentTimeWindow.forEach(note => {
+        onNotePlayed(note);
+      });
+    }
+  }, [isPlaying, currentPosition, notes, onNotePlayed]);
 
   // Smaller key dimensions for better responsiveness
   const keyWidth = 40; // Reduced from 60
