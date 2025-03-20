@@ -7,7 +7,7 @@ import { EffectsPanel } from './editor/EffectsPanel';
 import { PianoRoll } from './editor/PianoRoll';
 import { HorizontalPiano } from './editor/HorizontalPiano';
 import { useMidiMapping } from '@/hooks/useMidiMapping';
-import { ChevronLeft, ChevronRight, Music, WaveformCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Music, AudioWaveform } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Note } from '@/types/pianoRoll';
@@ -106,7 +106,7 @@ export const AudioEditor = () => {
             >
               <TabsList className="grid grid-cols-2 mb-4">
                 <TabsTrigger value="midimap" className="flex items-center gap-1">
-                  <WaveformCircle className="h-4 w-4" />
+                  <AudioWaveform className="h-4 w-4" />
                   MIDI Mapping
                 </TabsTrigger>
                 <TabsTrigger value="pianoroll" className="flex items-center gap-1">
