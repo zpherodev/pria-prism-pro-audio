@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Sliders, AudioWaveform, Filter, Music4, BadgePlus, ChevronsUpDown, BadgePercent, PlayCircle, Waves } from 'lucide-react';
 import { Slider, VerticalSlider, FrequencySlider } from "@/components/ui/slider";
@@ -57,6 +58,13 @@ type ParamEQBand = {
   q: number;
   enabled: boolean;
   color: string;
+};
+
+type EffectsPanelProps = {
+  audioBuffer?: AudioBuffer | null;
+  synthSettings?: SynthesizerSettings;
+  currentInstrument?: string;
+  onUpdateSynthSettings?: (settings: SynthesizerSettings) => void;
 };
 
 export const EffectsPanel = ({
@@ -291,7 +299,8 @@ export const EffectsPanel = ({
   // Fixed discrete points for dB markers
   const dbMarkers = [12, 8, 4, 0, -4, -8, -12];
 
-  return <div className="h-full flex flex-col">
+  return (
+    <div className="h-full flex flex-col">
       <Tabs defaultValue="synth" className="w-full flex-grow">
         <TabsList className="mb-4 bg-zinc-800 rounded-full">
           <TabsTrigger value="synth" className="flex items-center gap-1">
@@ -703,4 +712,21 @@ export const EffectsPanel = ({
                         <span>{paramEQBands.find(b => b.id === selectedBand)?.q.toFixed(2)}</span>
                       </div>
                       <Slider 
-                        value
+                        value={[paramEQBands.find(b => b.id === selectedBand)?.q || 1]} 
+                        min={0.1} 
+                        max={10} 
+                        step={0.1} 
+                        onValueChange={(values) => selectedBand && updateParamEQBand(selectedBand, 'q', values[0])}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        </ScrollArea>
+      </Tabs>
+    </div>
+  );
+};
