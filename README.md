@@ -5,6 +5,10 @@
 
 **URL**: https://lovable.dev/projects/4cddc5d8-2c4a-4f2c-8bdb-c6dfb50ccf0b
 
+## License
+
+This project is licensed under a custom open-source license with royalty provisions for commercial use. See the [LICENSE](./LICENSE) file for details.
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
